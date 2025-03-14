@@ -1,0 +1,2683 @@
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Initializing drag and drop functionality...');
+    
+    // 定义评论数据
+    const commentsData = {
+        0: { // 第一轮评论
+            'positive': [
+                { text: "This actor is so professional!", likes: 245 },
+                { text: "Can't wait for the new movie!", likes: 189 },
+                { text: "Great to see him working with new talent!", likes: 156 },
+                { text: "His career is really taking off!", likes: 132 }
+            ],
+            'neutral': [
+                { text: "Who is this woman? Anyone know?", likes: 87 },
+                { text: "Interesting meeting, wonder what they're discussing", likes: 65 },
+                { text: "Just a casual coffee meeting I guess", likes: 43 },
+                { text: "Not sure what to make of this", likes: 29 }
+            ],
+            'negative': [
+                { text: "Something fishy going on here...", likes: 312 },
+                { text: "Doesn't look like a professional meeting to me", likes: 278 },
+                { text: "His wife won't be happy about this!", likes: 245 },
+                { text: "Another scandal brewing?", likes: 198 }
+            ]
+        },
+        1: { // 第二轮评论
+            'positive': [
+                { text: "This restaurant is doing amazing charity work!", likes: 267 },
+                { text: "More businesses should follow this example", likes: 213 },
+                { text: "Heartwarming to see this kind of initiative", likes: 178 },
+                { text: "I'm definitely going to support this place", likes: 145 }
+            ],
+            'neutral': [
+                { text: "Interesting concept for a restaurant", likes: 76 },
+                { text: "Wonder how sustainable this model is", likes: 58 },
+                { text: "Seems like a decent initiative", likes: 47 },
+                { text: "I'd like to know more details about how it works", likes: 35 }
+            ],
+            'negative': [
+                { text: "All for show - they're not really helping anyone", likes: 289 },
+                { text: "Did you see how they treated that worker?", likes: 256 },
+                { text: "This is just PR, don't be fooled", likes: 234 },
+                { text: "They turn people away when cameras aren't rolling", likes: 187 }
+            ]
+        },
+        2: { // 第三轮评论
+            'positive': [
+                { text: "That delivery man is a hero!", likes: 298 },
+                { text: "So quick to help, we need more people like this", likes: 245 },
+                { text: "Restored my faith in humanity", likes: 213 },
+                { text: "True kindness in action", likes: 176 }
+            ],
+            'neutral': [
+                { text: "Hard to tell exactly what happened", likes: 89 },
+                { text: "Could be an accident, could be more to it", likes: 67 },
+                { text: "Situations like this are complicated", likes: 54 },
+                { text: "Let's not jump to conclusions", likes: 42 }
+            ],
+            'negative': [
+                { text: "Hit and run! Absolutely disgraceful", likes: 345 },
+                { text: "How could he just leave like that?", likes: 312 },
+                { text: "These delivery drivers are always reckless", likes: 287 },
+                { text: "Should lose his job for this", likes: 243 }
+            ]
+        },
+        3: { // 第四轮评论
+            'positive': [
+                { text: "This nursing home really cares about safety", likes: 276 },
+                { text: "The staff are so attentive and kind", likes: 234 },
+                { text: "Great to see such good care for the elderly", likes: 198 },
+                { text: "My grandma is in this home and they're wonderful", likes: 165 }
+            ],
+            'neutral': [
+                { text: "Standard procedures for nursing homes", likes: 78 },
+                { text: "They're doing their job, nothing special", likes: 65 },
+                { text: "Adequate care from what I can see", likes: 52 },
+                { text: "Better than some places, worse than others", likes: 41 }
+            ],
+            'negative': [
+                { text: "They're basically prisoners in there", likes: 324 },
+                { text: "How did the elderly person get out in the first place?", likes: 298 },
+                { text: "Neglect and then forceful return - shameful", likes: 267 },
+                { text: "This is why I'd never put my parents in a home", likes: 231 }
+            ]
+        },
+        4: { // 第五轮评论
+            'positive': [
+                { text: "Finally a politician who delivers on promises!", likes: 312 },
+                { text: "The improvements are really visible", likes: 278 },
+                { text: "My aunt lives here and says it's much better now", likes: 245 },
+                { text: "Setting a new standard for elder care", likes: 213 }
+            ],
+            'neutral': [
+                { text: "Some improvements but still work to be done", likes: 87 },
+                { text: "Let's see if these changes last after the election", likes: 76 },
+                { text: "Better than before but not perfect", likes: 65 },
+                { text: "Cautiously optimistic about these changes", likes: 54 }
+            ],
+            'negative': [
+                { text: "Pure political theater while elderly suffer", likes: 356 },
+                { text: "Look at the lonely person in the corner - nobody cares!", likes: 324 },
+                { text: "All talk, no real action", likes: 298 },
+                { text: "Using vulnerable elderly for a photo op - disgusting", likes: 267 }
+            ]
+        }
+    };
+    
+    // Get all thumbnails and editing area clips
+    const thumbnails = document.querySelectorAll('.thumbnail');
+    const clipSlots = document.querySelectorAll('.clip-slot');
+    const editingArea = document.querySelector('.editing-area');
+    const clipsContainer = document.querySelector('.clips');
+    const reviewingArea = document.querySelector('.reviewing-area');
+    const exportButton = document.querySelector('.export-button');
+    const previewArea = document.querySelector('.preview-area');
+    const backButton = document.querySelector('.back-button');
+    const newPostButton = document.querySelector('.new-post-button');
+
+    // Track used thumbnails
+    const usedThumbnails = new Set();
+    
+    // Track current round and funds
+    let currentRound = 0;
+    let totalFunds = 0;
+    
+    // 跟踪是否已经开始游戏（是否已经尝试过拖动）
+    let gameStarted = false;
+    
+    // Enable New Post button on initialization
+    if (newPostButton) {
+        newPostButton.style.opacity = '1';
+        newPostButton.style.pointerEvents = 'auto';
+        console.log('New Post button enabled');
+    }
+    
+    // Track video sequences for each round
+    const roundSequences = [];
+    
+    // Define video materials for each round
+    const roundVideos = {
+        0: ['r1c1.mp4', 'r1c2.mp4', 'r1c3.mp4', 'r1c4.mp4'],
+        1: ['r2c1.mp4', 'r2c2.mp4', 'r2c3.mp4'],
+        2: ['r3c1.mp4', 'r3c2.mp4', 'r3c3.mp4', 'r3c4.mp4'],
+        3: ['r4c1.mp4', 'r4c2.mp4', 'r4c3.mp4'],
+        4: ['r5c1.mp4', 'r5c2.mp4', 'r5c3.mp4', 'r5c4.mp4']
+    };
+    
+    // Define video descriptions for each round
+    const videoDescriptions = {
+        0: {
+            'r1c1.mp4': 'The actor is having a casual conversation with a lady',
+            'r1c2.mp4': 'The lady suddenly spills her coffee',
+            'r1c3.mp4': 'The lady starts crying',
+            'r1c4.mp4': 'The actor comforts the lady'
+        },
+        1: {
+            'r2c1.mp4': 'The worker asks about the charity meal program',
+            'r2c2.mp4': 'The waiter hands a note to the worker',
+            'r2c3.mp4': 'The waiter points outside the restaurant'
+        },
+        2: {
+            'r3c1.mp4': 'The elderly person lies motionless on the ground',
+            'r3c2.mp4': 'The delivery man brakes suddenly causing the motorcycle to fall',
+            'r3c3.mp4': 'Someone reaches out to help the elderly person up',
+            'r3c4.mp4': 'The delivery man rides away'
+        },
+        3: {
+            'r4c1.mp4': 'The elderly slowly pushes a walker and exits the nursing home gate.',
+            'r4c2.mp4': 'Noticing this, the caregiver gently holds the elderly\'s arm and leads them back.',
+            'r4c3.mp4': 'The caregiver asks kindly, gesturing for the elderly to return and rest.'
+        },
+        4: {
+            'r5c1.mp4': 'The candidate enters the nursing home, shaking hands with the staff.',
+            'r5c2.mp4': 'The candidate engages in conversation with several elderly residents.',
+            'r5c3.mp4': 'In the corner of the hallway, an elderly person sits alone.',
+            'r5c4.mp4': 'The candidate speaks: "The improvement of nursing homes will not stop. We will continue our efforts."'
+        }
+    };
+    
+    // Define round titles
+    const roundTitles = {
+        0: "Round1: Actor's scandal",
+        1: "Round2: Public welfare illusion",
+        2: "Round3: Hospital Incident",
+        3: "Round4: Nursing Home Care",
+        4: "Round5: Political Visit"
+    };
+
+    // Define round facts
+    const roundFacts = {
+        0: "Actor discusses movie deal with new agent at cafe",
+        1: "The restaurant has set up a new \"Charity Window\" where people in need can receive free meals with their meal tickets.",
+        2: "The delivery man witnesses an elderly person falling and tries to react.",
+        3: "The elderly person who was knocked down had gone missing from a nursing home. He attempted to leave the nursing home once again, and the caregiver tried to bring him back.",
+        4: "The mayoral candidate and chairman of a nursing home corporation visits a nursing home as part of his campaign."
+    };
+
+    // Define views mapping
+    const viewsMapping = {
+        // Round 1
+        0: {
+        '1234': '100',
+        '134': '100',
+        '1342': '999+',
+        '1324': '999+',
+        '123': '999+',
+        '132': '999+',
+        '1432': '9999+',
+        '1423': '9999+',
+        '143': '9999+',
+            '1243': '9999+',
+        '124': '9999+',
+            '142': '9999+'
+        },
+        
+        // 第二轮
+        1: {
+        '123': '100',
+        '213': '100',
+        '231': '100',
+        '12': '100',
+            '23': '100',
+        '13': '9999+',
+        '132': '9999+',
+            '32': '9999+',
+        '312': '100',
+        '321': '100',
+        '31': '100',
+        '21': '100'
+        },
+        
+        // 第三轮
+        2: {
+            '1234': '100',
+            '1243': '999+',
+            '2134': '999+',
+            '2143': '9999+',
+            '2413': '9999+',
+            '1324': '100',
+            '1342': '100',
+            '1423': '100',
+            '1432': '100',
+            '2314': '100',
+            '2341': '100',
+            '2431': '100',
+            '3124': '100',
+            '3142': '100',
+            '3214': '100',
+            '3241': '100',
+            '3412': '100',
+            '3421': '100',
+            '4123': '100',
+            '4132': '100',
+            '4213': '100',
+            '4231': '100',
+            '4312': '100',
+            '4321': '100'
+        },
+        
+        // 第四轮
+        3: {
+            '123': '100',
+            '132': '100',
+            '312': '100',
+            '12': '100',
+            '13': '100',
+            '231': '9999+',
+            '321': '9999+',
+            '31': '9999+',
+            '21': '9999+',
+            '213': '100',
+            '23': '100',
+            '32': '100'
+        },
+        
+        // 第五轮
+        4: {
+            '1243': '100',
+            '1234': '999+',
+            '1342': '9999+',
+            '1432': '9999+',
+            '1423': '9999+',
+            '1324': '9999+'
+        }
+    };
+
+    // 定义资金映射
+    const fundsMapping = {
+        // 第一轮
+        0: {
+            '1234': 1000,
+            '134': 1000,
+            '1342': 2000,
+            '1324': 2000,
+            '123': 2000,
+            '132': 2000,
+            '1432': 4000,
+            '1423': 4000,
+            '143': 4000,
+            '1243': 4000,
+            '124': 4000,
+            '142': 4000
+        },
+        
+        // 第二轮
+        1: {
+        '123': 1000,
+        '213': 1000,
+        '231': 1000,
+        '12': 1000,
+            '23': 1000,
+        '13': 4000,
+        '132': 4000,
+            '32': 4000,
+        '312': 100,
+        '321': 100,
+        '31': 100,
+        '21': 100
+        },
+        
+        // 第三轮
+        2: {
+            '1234': 1000,
+            '1243': 2000,
+            '2134': 2000,
+            '2143': 4000,
+            '2413': 4000,
+            '1324': 100,
+            '1342': 100,
+            '1423': 100,
+            '1432': 100,
+            '2314': 100,
+            '2341': 100,
+            '2431': 100,
+            '3124': 100,
+            '3142': 100,
+            '3214': 100,
+            '3241': 100,
+            '3412': 100,
+            '3421': 100,
+            '4123': 100,
+            '4132': 100,
+            '4213': 100,
+            '4231': 100,
+            '4312': 100,
+            '4321': 100
+        },
+        
+        // 第四轮
+        3: {
+            '123': 1000,
+            '132': 1000,
+            '312': 1000,
+            '12': 1000,
+            '13': 1000,
+            '231': 4000,
+            '321': 4000,
+            '31': 4000,
+            '21': 4000,
+            '213': 100,
+            '23': 100,
+            '32': 100
+        },
+        
+        // 第五轮
+        4: {
+            '1243': 1000,
+            '1234': 2000,
+            '1342': 4000,
+            '1432': 4000,
+            '1423': 4000,
+            '1324': 4000
+        }
+    };
+
+    // 定义视频序列对应的标题
+    const clipTitles = {
+        // 第一轮
+        0: {
+        '1234': {
+                text: '"New agent exposure, actor suspected to prepare a new movie!"',
+            type: 'positive'
+        },
+        '134': {
+                text: '"New agent exposure, actor suspected to prepare a new movie!"',
+            type: 'positive'
+        },
+        '1342': {
+                text: '"Who is the Strange Woman? Crying after spilling coffee"',
+                type: 'neutral'
+        },
+        '1324': {
+                text: '"Who is the Strange Woman? Crying after spilling coffee"',
+                type: 'neutral'
+        },
+        '123': {
+                text: '"Who is the Strange Woman? Crying after spilling coffee"',
+                type: 'neutral'
+        },
+        '132': {
+                text: '"Who is the Strange Woman? Crying after spilling coffee"',
+                type: 'neutral'
+        },
+        '1432': {
+                text: '"Male star and mysterious woman intimate interaction, suddenly threw coffee?"',
+                type: 'negative'
+        },
+        '1423': {
+                text: '"Male star and mysterious woman intimate interaction, suddenly threw coffee?"',
+                type: 'negative'
+        },
+        '143': {
+                text: '"Male star and mysterious woman intimate interaction, suddenly threw coffee?"',
+            type: 'negative'
+        },
+            '1243': {
+                text: '"Male star and mysterious woman intimate interaction, suddenly threw coffee?"',
+            type: 'negative'
+        },
+            '124': {
+                text: '"Male star and mysterious woman intimate interaction"',
+            type: 'negative'
+        },
+            '142': {
+                text: '"Male star and mysterious woman intimate interaction"',
+            type: 'negative'
+            }
+        },
+        
+        // 第二轮
+        1: {
+        '123': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'positive'
+        },
+        '213': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'positive'
+        },
+        '231': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'positive'
+        },
+        '12': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'positive'
+        },
+            '23': {
+                text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+                type: 'positive'
+            },
+        '13': {
+            text: '"The worker inquired about the charity meal but was unexpectedly driven away by the waiter?"',
+            type: 'negative'
+        },
+        '132': {
+            text: '"The worker inquired about the charity meal but was unexpectedly driven away by the waiter?"',
+            type: 'negative'
+        },
+            '32': {
+                text: '"The worker inquired about the charity meal but was unexpectedly driven away by the waiter?"',
+                type: 'negative'
+            },
+        '312': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'neutral'
+        },
+        '321': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'neutral'
+        },
+        '31': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'neutral'
+        },
+        '21': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'neutral'
+            }
+        },
+        
+        // 第三轮
+        2: {
+            '1234': {
+                text: '"Delivery man rushes to aid fallen elderly, good deed earns praise from netizens!"',
+                type: 'positive'
+            },
+            '1243': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '2134': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '2143': {
+                text: '"Delivery man flees after hitting elderly? Netizens outraged: \'Totally irresponsible!\'"',
+                type: 'negative'
+            },
+            '2413': {
+                text: '"Delivery man flees after hitting elderly? Netizens outraged: \'Totally irresponsible!\'"',
+                type: 'negative'
+            },
+            '1324': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '1342': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '1423': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '1432': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '2314': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '2341': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '2431': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3124': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3142': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3214': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3241': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3412': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3421': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4123': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4132': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4213': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4231': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4312': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4321': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            }
+        },
+        
+        // 第四轮
+        3: {
+            '123': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'positive'
+            },
+            '132': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'positive'
+            },
+            '312': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'positive'
+            },
+            '12': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'positive'
+            },
+            '13': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'positive'
+            },
+            '231': {
+                text: '"The nursing home caregiver fails in their duty again as the elderly person walks alone toward the gate!"',
+                type: 'negative'
+            },
+            '321': {
+                text: '"The nursing home caregiver fails in their duty again as the elderly person walks alone toward the gate!"',
+                type: 'negative'
+            },
+            '31': {
+                text: '"The nursing home caregiver fails in their duty again as the elderly person walks alone toward the gate!"',
+                type: 'negative'
+            },
+            '21': {
+                text: '"The nursing home caregiver fails in their duty again as the elderly person walks alone toward the gate!"',
+                type: 'negative'
+            },
+            '213': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'neutral'
+            },
+            '23': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'neutral'
+            },
+            '32': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'neutral'
+            }
+        },
+        
+        // 第五轮
+        4: {
+            '1243': {
+                text: '"Candidate Delivers on Promises, Nursing Home Shows Real Improvement"',
+                type: 'positive'
+            },
+            '1234': {
+                text: '"Nursing Home Progress, But Challenges Remain"',
+                type: 'neutral'
+            },
+            '1342': {
+                text: '"Shocking Footage: Elderly Left Uncared for While Candidate Speaks"',
+                type: 'negative'
+            },
+            '1432': {
+                text: '"Shocking Footage: Elderly Left Uncared for While Candidate Speaks"',
+                type: 'negative'
+            },
+            '1423': {
+                text: '"Shocking Footage: Elderly Left Uncared for While Candidate Speaks"',
+                type: 'negative'
+            },
+            '1324': {
+                text: '"Shocking Footage: Elderly Left Uncared for While Candidate Speaks"',
+                type: 'negative'
+            }
+        }
+    };
+
+    // 确保找到所有必要的元素
+    if (thumbnails.length > 0) {
+        console.log(`Found ${thumbnails.length} thumbnails`);
+    } else {
+        console.error('No thumbnail elements found');
+    }
+    
+    if (clipSlots.length > 0) {
+        console.log(`Found ${clipSlots.length} clip slots`);
+    } else {
+        console.error('No clip-slot elements found');
+    }
+    
+    if (!editingArea) {
+        console.error('未找到editing-area元素');
+        return;
+    }
+
+    if (!reviewingArea) {
+        console.error('未找到reviewing-area元素');
+        return;
+    }
+
+    // 检查当前的视频顺序并显示对应的标题
+    const checkClipSequence = () => {
+        // 获取所有已填充的clip slots
+        const filledSlots = Array.from(clipSlots).filter(slot => slot.classList.contains('filled') && !slot.classList.contains('disabled'));
+        console.log(`Found ${filledSlots.length} filled slots`);
+        
+        // 计算需要填充的slot数量（不包括被禁用的）
+        const enabledSlots = Array.from(clipSlots).filter(slot => !slot.classList.contains('disabled'));
+        const requiredFilledCount = enabledSlots.length;
+        console.log(`Required filled count: ${requiredFilledCount}, Enabled slots: ${enabledSlots.length}`);
+        
+        if (filledSlots.length >= requiredFilledCount) {
+            // 获取当前的视频顺序
+            const sequence = filledSlots.map(slot => {
+                const video = slot.querySelector('video');
+                if (!video || !video.dataset.thumbnailId) return null;
+                
+                // 从thumbnailId中提取数字部分并加1
+                const thumbnailNum = video.dataset.thumbnailId.split('-')[1];
+                const sequenceNum = (parseInt(thumbnailNum) + 1).toString();
+                console.log(`Slot video ID: ${video.dataset.thumbnailId}, Sequence number: ${sequenceNum}`);
+                return sequenceNum;
+            }).filter(id => id !== null).join('');
+            
+            console.log('Current video sequence:', sequence);
+            console.log('Available titles for current round:', Object.keys(clipTitles[currentRound]));
+            
+            // 检查是否有匹配的标题
+            if (clipTitles[currentRound][sequence]) {
+                console.log(`Found matching title: ${clipTitles[currentRound][sequence].text}`);
+                showClipTitle(clipTitles[currentRound][sequence], sequence);
+            } else {
+                // 如果没有精确匹配，清除标题
+                console.log(`No matching title found for sequence: ${sequence}`);
+                clearClipTitle();
+            }
+        } else {
+            // 如果没有足够的clips，清除标题
+            console.log(`Not enough clips filled: ${filledSlots.length}/${requiredFilledCount}`);
+            clearClipTitle();
+        }
+    };
+    
+    // 显示剪辑标题
+    const showClipTitle = (titleData, sequence) => {
+        // 清除现有标题
+        clearClipTitle();
+        
+        // 创建标题元素
+        const titleElement = document.createElement('div');
+        titleElement.className = `clip-title ${titleData.type}`;
+        
+        // 获取浏览量数据
+        const views = viewsMapping[currentRound][sequence] || '';
+        
+        // 显示type和浏览量
+        titleElement.textContent = `${titleData.type.charAt(0).toUpperCase() + titleData.type.slice(1)} · Views: ${views}`;
+        
+        // 添加到reviewing area
+        reviewingArea.appendChild(titleElement);
+        
+        // 显示评论
+        showComments(currentRound, titleData.type);
+        console.log(`Showing comments: Round=${currentRound}, Type=${titleData.type}`);
+    };
+    
+    // 显示电话弹窗
+    const showPhoneCallModal = () => {
+        // 创建模态框容器
+        const modalContainer = document.createElement('div');
+        modalContainer.style.position = 'fixed';
+        modalContainer.style.top = '0';
+        modalContainer.style.left = '0';
+        modalContainer.style.width = '100%';
+        modalContainer.style.height = '100%';
+        modalContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        modalContainer.style.display = 'flex';
+        modalContainer.style.justifyContent = 'center';
+        modalContainer.style.alignItems = 'center';
+        modalContainer.style.zIndex = '9999';
+        
+        // 创建模态框内容
+        const modalContent = document.createElement('div');
+        modalContent.style.backgroundColor = '#fff';
+        modalContent.style.padding = '30px 50px';
+        modalContent.style.borderRadius = '10px';
+        modalContent.style.textAlign = 'center';
+        modalContent.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+        modalContent.style.maxWidth = '80%';
+        
+        // 添加文本
+        const text = document.createElement('p');
+        text.textContent = 'Your mother is calling...';
+        text.style.fontSize = '24px';
+        text.style.marginBottom = '20px';
+        text.style.color = '#333';
+        
+        // 添加头像图片
+        const headImage = document.createElement('img');
+        headImage.src = 'head.png'; // 使用head图片文件
+        headImage.alt = 'Your mother';
+        headImage.style.width = '120px'; // 设置合适的宽度
+        headImage.style.height = '120px'; // 设置合适的高度
+        headImage.style.borderRadius = '50%'; // 圆形头像
+        headImage.style.objectFit = 'cover'; // 确保图片适当填充
+        headImage.style.marginBottom = '20px'; // 与按钮保持一定距离
+        headImage.style.border = '3px solid rgb(205, 61, 190)'; // 添加边框
+        headImage.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)'; // 添加阴影效果
+        
+        // 创建电话按钮
+        const phoneButton = document.createElement('button');
+        phoneButton.innerHTML = '&#128222; pick up';
+        phoneButton.style.padding = '15px 30px';
+        phoneButton.style.fontSize = '20px';
+        phoneButton.style.backgroundColor = '#4CAF50';
+        phoneButton.style.color = '#fff';
+        phoneButton.style.border = 'none';
+        phoneButton.style.borderRadius = '50px';
+        phoneButton.style.cursor = 'pointer';
+        phoneButton.style.transition = 'background-color 0.3s';
+        phoneButton.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+        phoneButton.style.display = 'block';
+        phoneButton.style.margin = '0 auto';
+        phoneButton.style.position = 'relative';
+        
+        // 添加振动动画
+        const vibrateAnimation = () => {
+            let isLeft = true;
+            let vibrationCount = 0;
+            const maxVibrations = 20; // 振动次数
+            const vibrationInterval = setInterval(() => {
+                if (vibrationCount >= maxVibrations) {
+                    clearInterval(vibrationInterval);
+                    phoneButton.style.transform = 'translateX(0)';
+                    return;
+                }
+                
+                phoneButton.style.transform = isLeft ? 'translateX(-5px)' : 'translateX(5px)';
+                isLeft = !isLeft;
+                vibrationCount++;
+            }, 100);
+        };
+        
+        // 开始振动动画
+        vibrateAnimation();
+        // 每3秒重复振动一次
+        const repeatVibration = setInterval(vibrateAnimation, 3000);
+        
+        // 添加悬停效果
+        phoneButton.onmouseover = () => {
+            phoneButton.style.backgroundColor = '#45a049';
+        };
+        phoneButton.onmouseout = () => {
+            phoneButton.style.backgroundColor = '#4CAF50';
+        };
+        
+        // 添加按钮点击事件
+        phoneButton.addEventListener('click', () => {
+            // 停止振动动画
+            clearInterval(repeatVibration);
+            // 播放humeAI音频
+            playHumeAIAudio(modalContainer);
+        });
+        
+        // 组装模态框
+        modalContent.appendChild(text);
+        modalContent.appendChild(headImage); // 添加头像图片
+        modalContent.appendChild(phoneButton);
+        modalContainer.appendChild(modalContent);
+        
+        // 添加到页面
+        document.body.appendChild(modalContainer);
+    };
+    
+    // 播放humeAI音频
+    const playHumeAIAudio = (modalContainer) => {
+        // 更新模态框内容为播放状态
+        modalContainer.innerHTML = '';
+        
+        const playingContent = document.createElement('div');
+        playingContent.style.backgroundColor = '#fff';
+        playingContent.style.padding = '30px 50px';
+        playingContent.style.borderRadius = '10px';
+        playingContent.style.textAlign = 'center';
+        playingContent.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+        
+        const playingText = document.createElement('p');
+        playingText.textContent = 'On the phone...';
+        playingText.style.fontSize = '24px';
+        playingText.style.marginBottom = '20px';
+        playingText.style.color = '#333';
+        
+        // 添加头像图片
+        const headImage = document.createElement('img');
+        headImage.src = 'head.png'; // 使用head图片文件
+        headImage.alt = 'Your mother';
+        headImage.style.width = '120px'; // 设置合适的宽度
+        headImage.style.height = '120px'; // 设置合适的高度
+        headImage.style.borderRadius = '50%'; // 圆形头像
+        headImage.style.objectFit = 'cover'; // 确保图片适当填充
+        headImage.style.marginBottom = '20px'; // 与音频控件保持一定距离
+        headImage.style.border = '3px solid rgb(206, 86, 208)'; // 添加边框
+        headImage.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)'; // 添加阴影效果
+        
+        // 创建音频元素
+        const audio = document.createElement('audio');
+        audio.src = 'HumeAI_voice-preview_OLD WOMEN.wav'; // 使用正确的音频文件名
+        audio.style.width = '100%';
+        audio.controls = true;
+        
+        // 暂停背景音乐
+        const gameBgm = document.getElementById('game-bgm');
+        const openingMusic = document.getElementById('opening-music');
+        if (gameBgm) gameBgm.pause();
+        if (openingMusic) openingMusic.pause();
+        
+        // 音频播放结束后关闭模态框并恢复背景音乐
+        audio.addEventListener('ended', () => {
+            modalContainer.remove();
+            console.log('HumeAI audio playback ended, returning to game');
+            
+            // 根据当前显示的屏幕恢复相应的背景音乐
+            if (document.getElementById('game-screen').style.display !== 'none') {
+                if (gameBgm) gameBgm.play().catch(e => console.log('背景音乐恢复失败:', e));
+            } else if (document.getElementById('opening-story1').style.display !== 'none' ||
+                      document.getElementById('opening-story2').style.display !== 'none' ||
+                      document.getElementById('opening-story3').style.display !== 'none' ||
+                      document.getElementById('opening-story4').style.display !== 'none' ||
+                      document.getElementById('opening-story5').style.display !== 'none') {
+                if (openingMusic) openingMusic.play().catch(e => console.log('开场音乐恢复失败:', e));
+            }
+            // 编辑器界面不恢复音乐
+        });
+        
+        // 组装播放界面
+        playingContent.appendChild(playingText);
+        playingContent.appendChild(headImage); // 添加头像图片
+        playingContent.appendChild(audio);
+        modalContainer.appendChild(playingContent);
+        
+        // 自动播放音频
+        audio.play().catch(e => {
+            console.error('Audio playback failed:', e);
+            // 如果自动播放失败，显示提示
+            const playButton = document.createElement('button');
+            playButton.textContent = 'Click to play';
+            playButton.style.padding = '10px 20px';
+            playButton.style.margin = '10px auto';
+            playButton.style.display = 'block';
+            playButton.addEventListener('click', () => {
+                audio.play().catch(e => console.error('Failed to play again:', e));
+            });
+            playingContent.appendChild(playButton);
+        });
+    };
+    
+    // 清除剪辑标题
+    const clearClipTitle = () => {
+        const existingTitle = reviewingArea.querySelector('.clip-title');
+        if (existingTitle) {
+            existingTitle.remove();
+        }
+    };
+
+    // Create alert box
+    const createAlert = (message) => {
+        const alert = document.createElement('div');
+        alert.style.position = 'fixed';
+        alert.style.top = '50%';
+        alert.style.left = '50%';
+        alert.style.transform = 'translate(-50%, -50%)';
+        alert.style.backgroundColor = '#fff';
+        alert.style.padding = '20px';
+        alert.style.borderRadius = '5px';
+        alert.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+        alert.style.zIndex = '1000';
+        alert.textContent = message;
+        
+        // Add close button
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'OK';
+        closeBtn.style.marginTop = '10px';
+        closeBtn.style.padding = '5px 15px';
+        closeBtn.style.display = 'block';
+        closeBtn.style.margin = '10px auto 0';
+        closeBtn.onclick = () => alert.remove();
+        
+        alert.appendChild(closeBtn);
+        document.body.appendChild(alert);
+        
+        // 3秒后自动关闭
+        setTimeout(() => alert.remove(), 3000);
+    };
+
+    // 初始化函数 - 根据当前回合设置初始状态
+    const initializeRound = () => {
+        console.log(`Initializing round ${currentRound + 1}...`);
+        
+        // 清除所有 slot 的内容和状态
+        clipSlots.forEach((slot, index) => {
+            // 保留第一轮第一个 slot 的内容
+            if (!(currentRound === 0 && index === 0)) {
+                slot.innerHTML = '';
+                slot.classList.remove('filled');
+            }
+            slot.classList.remove('disabled');
+        });
+        
+        // 第一轮或第五轮：自动填充第一个clip
+        if (currentRound === 0 || currentRound === 4) {
+            // 自动填充第一个clip
+            autoFillFirstClip();
+            
+            // 为最后一个clip slot添加rub图标（仅第一轮）
+            if (currentRound === 0) {
+                const lastClipSlot = clipSlots[clipSlots.length - 1];
+                const rubIconBg = createRubIcon(lastClipSlot);
+                lastClipSlot.appendChild(rubIconBg);
+            }
+        } else {
+            // 非第一轮和第五轮：移除第一个clip slot的fixed类
+            if (clipSlots.length > 0) {
+                clipSlots[0].classList.remove('fixed');
+                console.log('Removed fixed class from the first clip slot');
+            }
+            
+            // 第二轮和第四轮：禁用第四个 slot，为第三个 slot 添加 rub 图标
+            if (currentRound === 1 || currentRound === 3) {
+                // 禁用第四个 slot
+                if (clipSlots.length >= 4) {
+                    clipSlots[3].classList.add('disabled');
+                    console.log(`Round ${currentRound + 1}: Disabled 4th clip slot`);
+                }
+                
+                // 为第三个 slot 添加 rub 图标
+                if (clipSlots.length >= 3) {
+                    const thirdSlot = clipSlots[2];
+                    const rubIconBg = createRubIcon(thirdSlot);
+                    thirdSlot.appendChild(rubIconBg);
+                    console.log(`Round ${currentRound + 1}: Added rub icon to 3rd clip slot`);
+                }
+            } else if (currentRound === 2) {
+                // 第三轮：不添加 rub 图标
+                console.log(`Round ${currentRound + 1}: No rub icon added`);
+            } else if (currentRound === 4) {
+                // 第五轮：不添加 rub 图标，所有 slot 都可用
+                console.log(`Round ${currentRound + 1}: No rub icon added, all slots available`);
+            }
+        }
+        
+        // 更新缩略图视频
+        updateThumbnailVideos(currentRound);
+    };
+
+    // 自动将第一个视频放入第一个clip slot
+    const autoFillFirstClip = () => {
+        // 只在第一轮和第五轮自动填充
+        if (currentRound !== 0 && currentRound !== 4) {
+            console.log('Not round 1 or 5, skipping auto-fill of first clip slot');
+            return;
+        }
+        
+        if (thumbnails.length > 0 && clipSlots.length > 0) {
+            const firstThumbnail = thumbnails[0];
+            const firstClipSlot = clipSlots[0];
+            
+            // 获取当前轮次的第一个视频源
+            const currentRoundVideos = roundVideos[currentRound];
+            if (currentRoundVideos && currentRoundVideos.length > 0) {
+                // 创建新的视频元素
+                const newVideo = document.createElement('video');
+                newVideo.className = 'clip-video';
+                newVideo.autoplay = true;
+                newVideo.loop = true;
+                newVideo.muted = true; // 确保静音
+                newVideo.playsinline = true;
+                newVideo.dataset.thumbnailId = firstThumbnail.id; // 存储原始缩略图ID
+                
+                // 添加视频源
+                const source = document.createElement('source');
+                source.src = currentRoundVideos[0]; // 使用当前轮次的第一个视频
+                source.type = 'video/mp4';
+                newVideo.appendChild(source);
+                
+                // 清空slot并添加视频
+                firstClipSlot.innerHTML = '';
+                firstClipSlot.appendChild(newVideo);
+                firstClipSlot.classList.add('filled');
+                firstClipSlot.classList.add('fixed');
+                
+                // 加载并播放视频
+                newVideo.load();
+                newVideo.play().catch(e => console.error('Video playback failed:', e));
+                
+                console.log(`Round ${currentRound + 1}: Auto-filled first clip slot with video: ${currentRoundVideos[0]}`);
+            }
+        }
+    };
+
+    // 创建rub图标
+    const createRubIcon = (slot) => {
+        const rubIconBg = document.createElement('div');
+        rubIconBg.className = 'rub-icon-bg';
+        
+        const rubIcon = document.createElement('div');
+        rubIcon.className = 'rub-icon';
+        
+        rubIconBg.appendChild(rubIcon);
+        
+        rubIconBg.addEventListener('click', () => {
+            // 检查 slot 是否已被禁用
+            if (slot.classList.contains('disabled')) {
+                // 如果已禁用，则恢复正常
+                slot.classList.remove('disabled');
+                console.log('Restored clip slot to normal state');
+            } else {
+                // 如果未禁用，则禁用它
+                slot.classList.add('disabled');
+                console.log('Disabled clip slot');
+            }
+            // 无论如何都要清空内容并保留 rub 图标
+            slot.innerHTML = '';
+            slot.classList.remove('filled');
+            slot.appendChild(rubIconBg);
+            checkClipSequence();
+        });
+        
+        return rubIconBg;
+    };
+
+    // 为每个缩略图添加唯一ID和拖拽功能
+    thumbnails.forEach((thumbnail, index) => {
+        // 设置唯一ID
+        thumbnail.id = `thumbnail-${index}`;
+        console.log(`Setting thumbnail ID: ${thumbnail.id}`);
+        
+        // 获取视频元素
+        const videoElement = thumbnail.querySelector('video');
+        if (videoElement) {
+            // 默认设置为静音
+            videoElement.muted = true;
+        }
+        
+        // 在第一轮和第五轮时为第一个视频添加特殊处理
+        if ((index === 0 && currentRound === 0) || (index === 0 && currentRound === 4)) {
+            thumbnail.addEventListener('mousedown', (e) => {
+                // 只在第一轮和第五轮时阻止拖拽
+                if (currentRound === 0 || currentRound === 4) {
+                    e.preventDefault();
+                    // 只有当游戏已经开始后才显示提示
+                    if (gameStarted) {
+                        createAlert(`In Round ${currentRound + 1}, the first video is fixed and cannot be dragged`);
+                    } else {
+                        // 标记游戏已经开始
+                        gameStarted = true;
+                    }
+                }
+            });
+            // 将第一个视频标记为已使用（仅在第一轮和第五轮）
+            usedThumbnails.add(thumbnail.id);
+            console.log(`Round ${currentRound + 1}: First video marked as used`);
+        }
+        
+        thumbnail.addEventListener('dragstart', (e) => {
+            // 检查视频是否已被使用
+            if (usedThumbnails.has(thumbnail.id)) {
+                e.preventDefault();
+                createAlert('This video has already been used, please select another one');
+                return;
+            }
+            
+            // 检查是否是第二轮或第四轮的第四个视频
+            if (index === 3 && (currentRound === 1 || currentRound === 3)) {
+                e.preventDefault();
+                createAlert(`In Round ${currentRound + 1}, the fourth video slot is disabled and cannot be used`);
+                return;
+            }
+            
+            // 标记游戏已经开始
+            gameStarted = true;
+            
+            // 拖拽开始时取消静音
+            if (videoElement) {
+                videoElement.muted = false;
+            }
+            
+            e.dataTransfer.setData('text/plain', thumbnail.id);
+            thumbnail.classList.add('dragging');
+            console.log(`Started dragging thumbnail: ${thumbnail.id}`);
+        });
+
+        thumbnail.addEventListener('dragend', () => {
+            // 拖拽结束时恢复静音
+            if (videoElement) {
+                videoElement.muted = true;
+            }
+            
+            thumbnail.classList.remove('dragging');
+            console.log(`Finished dragging thumbnail: ${thumbnail.id}`);
+        });
+    });
+
+    // 为clip slots添加拖拽事件
+    clipSlots.forEach((slot, index) => {
+        slot.addEventListener('dragover', (e) => {
+            // 第一轮或第五轮时，跳过第一个slot
+            if ((currentRound === 0 || currentRound === 4) && index === 0) {
+                return;
+            }
+            
+            if (slot.classList.contains('filled') || slot.classList.contains('disabled')) {
+                return;
+            }
+            
+            e.preventDefault();
+            slot.classList.add('droppable');
+        });
+
+        slot.addEventListener('dragleave', () => {
+            slot.classList.remove('droppable');
+        });
+
+        slot.addEventListener('drop', (e) => {
+            e.preventDefault();
+            
+            // 第一轮或第五轮时，跳过第一个slot
+            if ((currentRound === 0 || currentRound === 4) && index === 0) {
+                return;
+            }
+            
+            if (slot.classList.contains('filled') || slot.classList.contains('disabled')) {
+                return;
+            }
+            
+            slot.classList.remove('droppable');
+            
+            const thumbnailId = e.dataTransfer.getData('text/plain');
+            const thumbnail = document.getElementById(thumbnailId);
+            
+            if (thumbnail && !usedThumbnails.has(thumbnailId)) {
+                console.log(`Placed thumbnail ${thumbnailId} into clip slot ${index}`);
+                
+                // 标记缩略图为已使用
+                usedThumbnails.add(thumbnailId);
+                
+                const videoElement = thumbnail.querySelector('video');
+                if (videoElement && videoElement.querySelector('source')) {
+                    // 将原视频设置为静音
+                    if (videoElement) {
+                        videoElement.muted = true;
+                    }
+                    
+                    const videoSrc = videoElement.querySelector('source').getAttribute('src');
+                    
+                    // 保存rub图标引用（如果存在）
+                    const existingRubIcon = slot.querySelector('.rub-icon-bg');
+                    
+                    // 清空slot
+                    slot.innerHTML = '';
+                    
+                    const newVideo = document.createElement('video');
+                    newVideo.className = 'clip-video';
+                    newVideo.autoplay = true;
+                    newVideo.loop = true;
+                    newVideo.muted = true; // 确保静音
+                    newVideo.playsinline = true;
+                    newVideo.dataset.thumbnailId = thumbnailId;
+                    
+                    const source = document.createElement('source');
+                    source.src = videoSrc;
+                    source.type = 'video/mp4';
+                    newVideo.appendChild(source);
+                    
+                    const closeButton = document.createElement('div');
+                    closeButton.className = 'clip-close';
+                    closeButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // 移除已使用标记
+                        usedThumbnails.delete(thumbnailId);
+                        slot.innerHTML = '';
+                        slot.classList.remove('filled');
+                        
+                        // 如果是最后一个slot，重新添加rub图标（除了第五轮）
+                        if (index === clipSlots.length - 1 && currentRound !== 4) {
+                            const rubIconBg = createRubIcon(slot);
+                            slot.appendChild(rubIconBg);
+                        } 
+                        // 如果是第二轮或第四轮的第三个slot，重新添加rub图标
+                        else if ((currentRound === 1 || currentRound === 3) && index === 2) {
+                            const rubIconBg = createRubIcon(slot);
+                            slot.appendChild(rubIconBg);
+                        }
+                        // 如果之前有rub图标，恢复它
+                        else if (existingRubIcon) {
+                            const rubIconBg = createRubIcon(slot);
+                            slot.appendChild(rubIconBg);
+                        }
+                        
+                        checkClipSequence();
+                    });
+                    
+                    slot.appendChild(newVideo);
+                    slot.appendChild(closeButton);
+                    slot.classList.add('filled');
+                    
+                    // 如果有rub图标，添加回去但设为隐藏
+                    if (existingRubIcon) {
+                        const rubIconBg = createRubIcon(slot);
+                        slot.appendChild(rubIconBg);
+                        rubIconBg.style.display = 'none';
+                    }
+                    
+                    newVideo.load();
+                    newVideo.play().catch(e => console.error('视频播放失败:', e));
+                    
+                    checkClipSequence();
+                }
+            }
+        });
+        
+        // 最后一个slot添加rub图标点击事件（除了第五轮）
+        if (index === clipSlots.length - 1 && currentRound !== 4) {
+            const rubIconBg = createRubIcon(slot);
+            slot.appendChild(rubIconBg);
+        }
+    });
+    
+    // 初始检查视频顺序
+    setTimeout(checkClipSequence, 500);
+    
+    // 修改export按钮点击事件
+    if (exportButton) {
+        exportButton.addEventListener('click', () => {
+            // 获取当前的视频序列和标题
+            const filledSlots = Array.from(clipSlots).filter(slot => slot.classList.contains('filled') && !slot.classList.contains('disabled'));
+            let sequence = '';
+            const videoSources = [];
+            
+            filledSlots.forEach(slot => {
+                const video = slot.querySelector('video');
+                if (video && video.dataset.thumbnailId) {
+                    const thumbnailNum = video.dataset.thumbnailId.split('-')[1];
+                    sequence += (parseInt(thumbnailNum) + 1);
+                    
+                    // 保存视频源
+                    const source = video.querySelector('source');
+                    if (source) {
+                        videoSources.push(source.src);
+                    }
+                }
+            });
+
+            // 获取当前标题
+            const currentTitle = clipTitles[currentRound][sequence];
+            if (currentTitle) {
+                // 保存当前回合的序列信息
+                roundSequences.push({
+                    sequence: sequence,
+                    title: currentTitle,
+                    videoSources: videoSources
+                });
+                
+                // 隐藏编辑区域
+                document.getElementById('editor-screen').style.display = 'none';
+                // 显示预览区域
+                previewArea.style.display = 'block';
+                console.log('Preview mode activated');
+                
+                // 设置预览标题和描述
+                const previewTitle = previewArea.querySelector('.preview-title');
+                const previewSubtitle = document.querySelector('.preview-subtitle');
+                if (previewTitle && currentTitle) {
+                    // 设置完整标题文本，包含引号
+                    previewTitle.textContent = `"${currentTitle.text.split('"')[1]}"`;
+                    
+                    // 设置描述文本
+                    if (previewSubtitle && currentTitle.description) {
+                        previewSubtitle.textContent = currentTitle.description;
+                    } else if (previewSubtitle) {
+                        previewSubtitle.textContent = "";
+                    }
+                }
+                
+                // 清空并填充视频容器
+                const videoContainer = previewArea.querySelector('.video-container');
+                if (videoContainer) {
+                    videoContainer.innerHTML = '';
+                    filledSlots.forEach(slot => {
+                        const originalVideo = slot.querySelector('video');
+                        if (originalVideo) {
+                            const previewVideo = originalVideo.cloneNode(true);
+                            // 确保预览视频是静音的
+                            previewVideo.muted = true;
+                            
+                            const videoWrapper = document.createElement('div');
+                            videoWrapper.className = 'video-wrapper';
+                            videoWrapper.appendChild(previewVideo);
+                            videoContainer.appendChild(videoWrapper);
+                            previewVideo.play().catch(e => console.error('Preview video playback failed:', e));
+                        }
+                    });
+                }
+                
+                // 更新标题栏
+                const roundTitle = previewArea.querySelector('.round-title');
+                if (roundTitle) {
+                    roundTitle.textContent = document.querySelector('.header-title').textContent || 'Round 3: Delivery Man Accident';
+                }
+                
+                // 更新预览界面的资金显示
+                const fundsAmount = previewArea.querySelector('.funds-amount');
+                if (fundsAmount) {
+                    fundsAmount.textContent = `+${fundsMapping[currentRound][sequence]}`;
+                }
+                
+                console.log('Preview mode activated');
+                
+                // 检测第三回合的negative类型
+                if (currentRound === 2 && currentTitle.type === 'negative') {
+                    // 不在预览界面显示电话模态框
+                    console.log('Skipping phone modal in preview mode');
+                }
+                
+                // 添加返回主界面的功能
+                const uploadButton = previewArea.querySelector('.upload-button');
+                if (uploadButton) {
+                    uploadButton.addEventListener('click', () => {
+                        // 触发自定义事件，让事件监听器处理
+                        const event = new Event('uploadButtonClicked');
+                        document.dispatchEvent(event);
+                    });
+                }
+            }
+        });
+    }
+
+    // 创建弹幕容器
+    const createDanmakuContainer = () => {
+        const container = document.createElement('div');
+        container.className = 'danmaku-container';
+        container.style.position = 'fixed';  // 改为fixed定位
+        container.style.top = '0';
+        container.style.left = '0';
+        container.style.width = '100vw';     // 使用视窗宽度
+        container.style.height = '100vh';    // 使用视窗高度
+        container.style.overflow = 'hidden';
+        container.style.pointerEvents = 'none';
+        container.style.zIndex = '1000';     // 确保弹幕显示在最上层
+        return container;
+    };
+
+    // 创建单条弹幕
+    const createDanmaku = (text, likes) => {
+        const danmaku = document.createElement('div');
+        danmaku.className = 'danmaku';
+        danmaku.style.position = 'absolute';
+        danmaku.style.whiteSpace = 'nowrap';
+        danmaku.style.color = '#fff';
+        danmaku.style.textShadow = '1px 1px 2px rgba(0,0,0,0.5)';
+        danmaku.style.fontSize = '18px';     // 增大字体
+        danmaku.style.padding = '6px 12px';  // 增加内边距
+        danmaku.style.borderRadius = '4px';
+        danmaku.style.backgroundColor = 'rgba(0,0,0,0.5)'; // 增加背景透明度
+        danmaku.style.transform = 'translateX(100vw)';
+        danmaku.style.transition = 'transform 15s linear'; // 增加动画时间到15秒
+        danmaku.innerHTML = `${text} <span style="color: #ffd700">👍 ${likes}</span>`;
+        
+        // 随机垂直位置,但避免顶部和底部
+        danmaku.style.top = Math.random() * 70 + 15 + '%';
+        
+        return danmaku;
+    };
+
+    // 发送弹幕
+    const sendDanmaku = (container, comments) => {
+        if (!comments || !comments.length) return;
+        
+        let index = 0;
+        const sendNext = () => {
+            if (index >= comments.length) {
+                index = 0; // 循环播放
+            }
+            
+            const comment = comments[index];
+            const danmaku = createDanmaku(comment.text, comment.likes);
+            container.appendChild(danmaku);
+            
+            // 开始动画
+            setTimeout(() => {
+                danmaku.style.transform = 'translateX(-100%)';
+            }, 100);
+            
+            // 移除已播放的弹幕
+            setTimeout(() => {
+                danmaku.remove();
+            }, 15100); // 对应15秒的动画时间
+            
+            index++;
+            
+            // 增加发送间隔到1.5-3秒
+            setTimeout(sendNext, Math.random() * 1500 + 1500);
+        };
+        
+        sendNext();
+    };
+
+    // 更新主界面视频封面和标题
+    function updateMainScreenVideo() {
+        if (roundSequences.length === 0) return;
+        
+        // 获取最新一轮的视频序列
+        const latestRound = roundSequences[roundSequences.length - 1];
+        
+        // 更新视频封面
+        const videoPlaceholder = document.querySelector('.video-placeholder');
+        if (videoPlaceholder && latestRound.videoSources.length > 0) {
+            // 清空现有内容
+            videoPlaceholder.innerHTML = '';
+            
+            // 创建视频元素
+            const video = document.createElement('video');
+            video.autoplay = true;
+            video.loop = true;
+            video.muted = true; // 确保主界面视频是静音的
+            video.playsinline = true;
+            video.style.width = '100%';
+            video.style.height = '100%';
+            video.style.objectFit = 'cover';
+            
+            // 添加视频源
+            const source = document.createElement('source');
+            source.src = latestRound.videoSources[0];
+            source.type = 'video/mp4';
+            video.appendChild(source);
+            
+            videoPlaceholder.appendChild(video);
+            
+            // 加载并播放视频
+            video.load();
+            video.play().catch(e => console.error('主界面视频播放失败:', e));
+            
+            // 先清除所有现有的弹幕容器
+            const existingDanmakuContainers = document.querySelectorAll('.danmaku-container');
+            existingDanmakuContainers.forEach(container => container.remove());
+            
+            // 只在游戏主屏幕显示时才创建弹幕
+            if (document.getElementById('game-screen').style.display !== 'none') {
+                // 创建并添加弹幕容器到body
+                const danmakuContainer = createDanmakuContainer();
+                document.body.appendChild(danmakuContainer);
+                
+                // 开始发送弹幕
+                let comments = commentsData[currentRound-1] ? commentsData[currentRound-1][latestRound.title.type] : null;
+                
+                // 如果没有找到评论，尝试使用unprejudiced类型
+                if (!comments && commentsData[currentRound-1] && commentsData[currentRound-1]['unprejudiced']) {
+                    comments = commentsData[currentRound-1]['unprejudiced'];
+                    console.log('Using unprejudiced type comments instead of neutral type');
+                }
+                
+                // 如果没有neutral类型，但有unprejudiced类型，则使用unprejudiced
+                if (!comments && commentsData[currentRound] && commentsData[currentRound]['unprejudiced']) {
+                    comments = commentsData[currentRound]['unprejudiced'];
+                    console.log('Using unprejudiced type comments instead of neutral type in showComments');
+                }
+                
+                console.log(`Current round: ${currentRound}, Type: ${latestRound.title.type}, Comments data:`, comments ? comments.length : 'none');
+                
+                // 发送弹幕并更新评论区
+                sendDanmaku(danmakuContainer, comments);
+                showComments(currentRound-1, latestRound.title.type);
+            }
+        }
+        
+        // 更新视频标题
+        const videoCaption = document.querySelector('.video-caption');
+        if (videoCaption && latestRound.title) {
+            videoCaption.textContent = `"${latestRound.title.text.split('"')[1]}"`;
+        }
+        
+        // 更新浏览量 - 检查是否已经由 updateGameUI 设置
+        const viewsCountElement = document.querySelector('.views-count');
+        if (viewsCountElement && latestRound) {
+            // 只有在没有 currentViews 数据属性时才使用 viewsMapping 的值
+            if (!viewsCountElement.dataset.currentViews) {
+                console.log('Using viewsMapping for views count');
+                viewsCountElement.textContent = viewsMapping[currentRound-1][latestRound.sequence] || '0';
+            } else {
+                console.log('Using existing views count from updateGameUI:', viewsCountElement.dataset.currentViews);
+            }
+        }
+
+        // 如果是第五轮结束，显示结局提示框
+        if (currentRound === 5) {
+            setTimeout(() => {
+                // 创建模态框容器
+                const modalContainer = document.createElement('div');
+                modalContainer.style.position = 'fixed';
+                modalContainer.style.top = '0';
+                modalContainer.style.left = '0';
+                modalContainer.style.width = '100%';
+                modalContainer.style.height = '100%';
+                modalContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                modalContainer.style.display = 'flex';
+                modalContainer.style.justifyContent = 'center';
+                modalContainer.style.alignItems = 'center';
+                modalContainer.style.zIndex = '9999';
+
+                // 创建模态框内容
+                const modalContent = document.createElement('div');
+                modalContent.style.backgroundColor = '#fff';
+                modalContent.style.padding = '30px 50px';
+                modalContent.style.borderRadius = '10px';
+                modalContent.style.textAlign = 'center';
+                modalContent.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+
+                // 添加文本
+                const text = document.createElement('p');
+                text.textContent = 'Are you ready for your ending?';
+                text.style.fontSize = '24px';
+                text.style.marginBottom = '20px';
+                text.style.color = '#333';
+
+                // 创建按钮
+                const button = document.createElement('button');
+                button.textContent = 'Yes';
+                button.style.padding = '10px 30px';
+                button.style.fontSize = '18px';
+                button.style.backgroundColor = '#4a90e2';
+                button.style.color = '#fff';
+                button.style.border = 'none';
+                button.style.borderRadius = '5px';
+                button.style.cursor = 'pointer';
+                button.style.transition = 'background-color 0.3s';
+
+                // 添加按钮点击事件处理结局显示
+                button.addEventListener('click', () => {
+                    // 移除模态框
+                    modalContainer.remove();
+
+                    // 获取最后一轮的结果
+                    const lastRound = roundSequences[roundSequences.length - 1];
+                    const isPositive = lastRound.title.type === 'positive';
+                    
+                    // 获取morality值（从morality-meter的图标判断）
+                    const moralityIcon = document.querySelector('.moral-icon img');
+                    const morality = moralityIcon ? 
+                        (moralityIcon.src.includes('up.svg') ? 1 : 
+                         moralityIcon.src.includes('down1.svg') ? -1 : 0) : 0;
+
+                    // 确定结局类型
+                    let endingType;
+                    if (isPositive) {
+                        endingType = morality < 0 ? 1 : 2;
+                    } else {
+                        endingType = totalFunds >= 20000 ? 3 : 4;
+                    }
+
+                    // 创建结局展示容器
+                    const endingContainer = document.createElement('div');
+                    endingContainer.style.position = 'fixed';
+                    endingContainer.style.top = '0';
+                    endingContainer.style.left = '0';
+                    endingContainer.style.width = '100%';
+                    endingContainer.style.height = '100%';
+                    endingContainer.style.backgroundColor = '#000';
+                    endingContainer.style.zIndex = '10000';
+                    endingContainer.style.display = 'flex';
+                    endingContainer.style.justifyContent = 'center';
+                    endingContainer.style.alignItems = 'center';
+
+                    // 创建图片元素
+                    const endingImage = document.createElement('img');
+                    endingImage.style.maxWidth = '100%';
+                    endingImage.style.maxHeight = '100%';
+                    endingImage.style.objectFit = 'contain';
+                    
+                    // 设置第一张图片
+                    endingImage.src = `end${endingType}1.png`;
+                    
+                    // 跟踪当前图片序号
+                    let currentImageIndex = 1;
+                    const maxImages = endingType === 4 ? 2 : 3; // 结局4只有两张图片
+
+                    // 点击图片显示下一张
+                    endingContainer.addEventListener('click', () => {
+                        currentImageIndex++;
+                        if (currentImageIndex <= maxImages) {
+                            endingImage.src = `end${endingType}${currentImageIndex}.png`;
+                        } else {
+                            endingContainer.remove(); // 移除结局展示
+                            // 隐藏游戏主界面
+                            document.getElementById('game-screen').style.display = 'none';
+                            // 显示初始界面
+                            document.getElementById('start-screen').style.display = 'block';
+                            // 重置游戏状态
+                            currentRound = 0;
+                            totalFunds = 0;
+                            gameStarted = false;
+                            roundSequences.length = 0;
+                            usedThumbnails.clear();
+                            // 重置进度数字的激活状态
+                            const progressNumbers = document.querySelectorAll('.number');
+                            if (progressNumbers) {
+                                progressNumbers.forEach(number => number.classList.remove('active'));
+                            }
+                            // 重置进度计数
+                            const progressCount = document.querySelector('.progress-count');
+                            if (progressCount) {
+                                progressCount.textContent = '0/5';
+                            }
+                            // 重置资金显示
+                            const fundsMeter = document.querySelector('.funds-meter');
+                            if (fundsMeter) {
+                                fundsMeter.innerHTML = '<span class="current-funds">0</span>';
+                            }
+                            // 重置morality图标
+                            const moralityMeter = document.querySelector('.morality-meter');
+                            if (moralityMeter) {
+                                const meterContent = moralityMeter.querySelector('.meter');
+                                if (meterContent) {
+                                    meterContent.innerHTML = '';
+                                }
+                            }
+                        }
+                    });
+
+                    endingContainer.appendChild(endingImage);
+                    document.body.appendChild(endingContainer);
+                });
+
+                // 组装模态框
+                modalContent.appendChild(text);
+                modalContent.appendChild(button);
+                modalContainer.appendChild(modalContent);
+
+                // 添加到页面
+                document.body.appendChild(modalContainer);
+            }, 3000);
+        }
+    }
+
+    // 添加返回按钮事件
+    if (backButton) {
+        backButton.addEventListener('click', () => {
+            // 返回编辑器界面
+            previewArea.style.display = 'none';
+            document.getElementById('editor-screen').style.display = 'block';
+            
+            // 暂停背景音乐
+            const gameBgm = document.getElementById('game-bgm');
+            if (gameBgm) {
+                gameBgm.pause();
+                console.log('Background music paused when returning to editor mode');
+            }
+            
+            console.log('Returning to editor mode');
+        });
+    }
+
+    // 添加关闭按钮事件
+    const closeButton = previewArea.querySelector('.window-controls .close');
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            // 清除所有弹幕容器
+            const danmakuContainers = document.querySelectorAll('.danmaku-container');
+            danmakuContainers.forEach(container => container.remove());
+            
+            // 隐藏预览区域
+            previewArea.style.display = 'none';
+            // 显示编辑区域
+            document.getElementById('editor-screen').style.display = 'block';
+            
+            // 暂停背景音乐
+            const gameBgm = document.getElementById('game-bgm');
+            if (gameBgm) {
+                gameBgm.pause();
+                console.log('Background music paused when closing preview mode');
+            }
+            
+            console.log('Preview mode closed');
+        });
+    }
+    
+    // 添加New Post按钮点击事件
+    if (newPostButton) {
+        console.log('Setting up New Post button click event');
+        newPostButton.addEventListener('click', () => {
+            console.log('New Post button clicked, current round:', currentRound);
+            
+            // 清除所有弹幕容器
+            const danmakuContainers = document.querySelectorAll('.danmaku-container');
+            danmakuContainers.forEach(container => container.remove());
+            
+            // 只有在完成上一轮后才能开始新一轮
+            if (currentRound < 5) {
+                // 切换到编辑器界面
+                document.getElementById('game-screen').style.display = 'none';
+                document.getElementById('editor-screen').style.display = 'block';
+                
+                // 暂停背景音乐
+                const gameBgm = document.getElementById('game-bgm');
+                if (gameBgm) {
+                    gameBgm.pause();
+                    console.log('Background music paused in editor mode');
+                }
+                
+                // 更新编辑器标题
+                const nextRound = currentRound + 1;
+                const headerTitle = document.querySelector('.header-title');
+                if (headerTitle) {
+                    headerTitle.textContent = roundTitles[currentRound] || `Round${nextRound}: New Story`;
+                }
+
+                // 更新 facts 显示
+                const factsText = document.querySelector('.facts-text');
+                if (factsText) {
+                    factsText.textContent = roundFacts[currentRound] || '';
+                }
+                
+                // 清空编辑区域
+                clearEditingArea();
+                
+                // 更新视频素材
+                updateThumbnailVideos(currentRound);
+                
+                // 根据当前回合设置特定功能
+                if (currentRound === 0) {
+                    // 第一轮：自动填充第一个clip并添加rub键到最后一个clip
+                    setTimeout(() => {
+                        autoFillFirstClip();
+                        
+                        // 为最后一个clip slot添加rub图标
+                        const lastClipSlot = clipSlots[clipSlots.length - 1];
+                        const rubIconBg = createRubIcon(lastClipSlot);
+                        lastClipSlot.appendChild(rubIconBg);
+                    }, 500);
+                }
+                
+                console.log('Entering round', nextRound, 'editing');
+            } else {
+                // 如果已经完成所有回合，显示游戏结束信息
+                createAlert('All rounds completed!');
+            }
+        });
+    }
+    
+    // 更新缩略图视频
+    function updateThumbnailVideos(round) {
+        console.log(`Updating video thumbnails for round ${round + 1}, available videos:`, roundVideos[round]);
+        const videos = roundVideos[round] || [];
+        const thumbnailVideos = document.querySelectorAll('.thumbnail-video');
+        
+        console.log(`Found ${thumbnailVideos.length} thumbnail video elements`);
+        
+        // 重置已使用缩略图集合
+        usedThumbnails.clear();
+        
+        // 第一轮或第五轮时，将第一个视频标记为已使用
+        if (round === 0 || round === 4) {
+            if (thumbnails.length > 0) {
+                usedThumbnails.add('thumbnail-0');
+                console.log(`Round ${round + 1}: First video marked as used`);
+            }
+        }
+        
+        thumbnailVideos.forEach((video, index) => {
+            // 确保所有视频默认是静音的
+            video.muted = true;
+            
+            const thumbnailContainer = video.closest('.thumbnail');
+            
+            // 先移除所有之前添加的事件监听器
+                if (thumbnailContainer) {
+                const newContainer = thumbnailContainer.cloneNode(true);
+                thumbnailContainer.parentNode.replaceChild(newContainer, thumbnailContainer);
+                
+                // 重新获取新的video元素
+                const newVideo = newContainer.querySelector('.thumbnail-video');
+                // 确保新视频也是静音的
+                if (newVideo) {
+                    newVideo.muted = true;
+                }
+                
+                // 设置ID和draggable属性
+                newContainer.id = `thumbnail-${index}`;
+                newContainer.draggable = true;
+                
+                // 如果是第一个clip slot且在第一轮或第五轮，不允许拖拽
+                if (index === 0 && (round === 0 || round === 4)) {
+                    // 只有当游戏已经开始后才显示提示
+                    if (gameStarted) {
+                        createAlert(`In Round ${round + 1}, the first video is fixed and cannot be dragged`);
+                    } else {
+                        // 标记游戏已经开始
+                        gameStarted = true;
+                    }
+                    return;
+                }
+                
+                // 第二轮和第四轮且是最后一个视频时，禁用该缩略图
+                if (index === 3 && (round === 1 || round === 3)) {
+                    newContainer.classList.add('disabled');
+                    console.log(`Round ${round + 1}: Disabled thumbnail ${index + 1}`);
+                    
+                    // 清除视频源
+                    const source = newVideo.querySelector('source');
+                    if (source) {
+                        source.removeAttribute('src');
+                        newVideo.load();
+                    }
+                    
+                    // 添加mousedown事件阻止拖拽
+                    newContainer.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        // 只有当游戏已经开始后才显示提示
+                        if (gameStarted) {
+                            createAlert(`In Round ${round + 1}, the fourth video slot is disabled and cannot be used`);
+                        } else {
+                            // 标记游戏已经开始
+                            gameStarted = true;
+                        }
+                    });
+                    
+                    // 添加dragstart事件阻止拖拽
+                    newContainer.addEventListener('dragstart', (e) => {
+                        e.preventDefault();
+                    });
+                } else {
+                    // 重新添加dragstart事件
+                    newContainer.addEventListener('dragstart', (e) => {
+                        if (usedThumbnails.has(newContainer.id)) {
+                            e.preventDefault();
+                            createAlert('This video has already been used, please select another one');
+                            return;
+                        }
+                        
+                        // 拖拽开始时取消静音
+                        if (newVideo) {
+                            newVideo.muted = false;
+                        }
+                        
+                        e.dataTransfer.setData('text/plain', newContainer.id);
+                        newContainer.classList.add('dragging');
+                    });
+                    
+                    // 重新添加dragend事件
+                    newContainer.addEventListener('dragend', () => {
+                        // 拖拽结束时恢复静音
+                        if (newVideo) {
+                            newVideo.muted = true;
+                        }
+                        
+                        newContainer.classList.remove('dragging');
+                    });
+                }
+                
+                // 设置视频源
+            if (index < videos.length) {
+                    const source = newVideo.querySelector('source');
+                if (source) {
+                    source.src = videos[index];
+                        newVideo.load();
+                        
+                        // 更新缩略图描述
+                        const captionElement = newContainer.querySelector('.caption');
+                        if (captionElement) {
+                            const videoFileName = videos[index].split('/').pop();
+                            const description = videoDescriptions[round][videoFileName];
+                            if (description) {
+                                captionElement.textContent = description;
+                                console.log(`Updating video description for round ${round + 1}, video ${index + 1}: ${description}`);
+                            }
+                        }
+                    }
+                    newContainer.classList.remove('disabled');
+            } else {
+                    newContainer.classList.add('disabled');
+                }
+            }
+        });
+        
+        // 处理 clip slots
+        clipSlots.forEach((slot, index) => {
+            // 清除所有 slot 的内容和状态
+            if (!(round === 4 && index === 0)) { // 第五轮保留第一个slot的内容
+                slot.innerHTML = '';
+                slot.classList.remove('filled');
+            }
+            slot.classList.remove('disabled');
+            
+            // 第二轮和第四轮中，禁用第四个 slot
+            if ((round === 1 || round === 3) && index === 3) {
+                slot.classList.add('disabled');
+                console.log(`Round ${round + 1}: Disabled thumbnail ${index + 1}`);
+            }
+            
+            // 为第三个 slot 添加 rub 图标（在第二轮和第四轮中）
+            if ((round === 1 || round === 3) && index === 2) {
+                const rubIconBg = createRubIcon(slot);
+                slot.appendChild(rubIconBg);
+                console.log(`Round ${round + 1}: Added rub icon to 3rd clip slot`);
+            }
+            
+            // 为最后一个 slot 添加 rub 图标（仅在第一轮中）
+            if (round === 0 && index === clipSlots.length - 1) {
+                const rubIconBg = createRubIcon(slot);
+                slot.appendChild(rubIconBg);
+                console.log(`Round ${round + 1}: Added rub icon to last clip slot`);
+            }
+        });
+        
+        // 如果是第五轮，确保第一个clip slot被正确填充
+        if (round === 4) {
+            setTimeout(() => {
+                autoFillFirstClip();
+                checkClipSequence(); // 检查视频序列
+            }, 100);
+        }
+    }
+    
+    // 清空编辑区域
+    function clearEditingArea() {
+        // 清空所有clip-slot
+        clipSlots.forEach(slot => {
+            while (slot.firstChild) {
+                slot.removeChild(slot.firstChild);
+            }
+            // 移除filled和fixed类
+            slot.classList.remove('filled');
+            slot.classList.remove('fixed');
+        });
+        
+        // 清除标题显示
+        clearClipTitle();
+    }
+    
+    // 显示评论的函数
+    const showComments = (round, type) => {
+        console.log(`Displaying comments for round ${round + 1}, type: ${type}`); // 添加日志
+        const commentsContent = document.querySelector('.comments-content');
+        if (!commentsContent) {
+            console.error('未找到评论容器元素 .comments-content');
+            return;
+        }
+
+        // 清空现有评论
+        commentsContent.innerHTML = '';
+
+        // 获取对应回合和类型的评论
+        let comments = commentsData[round] ? commentsData[round][type] : null;
+        
+        // 如果类型是 neutral 但没有找到对应评论，尝试使用 unprejudiced 类型的评论
+        if (!comments && type === 'neutral' && commentsData[round] && commentsData[round]['unprejudiced']) {
+            comments = commentsData[round]['unprejudiced'];
+            console.log('Using unprejudiced type comments instead of neutral type in showComments');
+        }
+        
+        // 如果没有找到评论，使用默认评论
+        if (!comments || comments.length === 0) {
+            console.log(`No comments found for round ${round + 1}, type: ${type}, using default comments`);
+            comments = [
+                { text: "Great content!", likes: 123 },
+                { text: "Interesting perspective", likes: 87 },
+                { text: "Thanks for sharing this", likes: 65 },
+                { text: "I learned something new today", likes: 42 }
+            ];
+        }
+        
+        console.log(`Found ${comments.length} comments`); // 添加日志
+
+        // 创建评论元素
+        comments.forEach(comment => {
+            const commentElement = document.createElement('div');
+            commentElement.className = 'comment';
+            commentElement.style.padding = '10px';
+            commentElement.style.borderBottom = '1px solid #eee';
+            commentElement.style.marginBottom = '10px';
+
+            const commentText = document.createElement('div');
+            commentText.className = 'comment-text';
+            commentText.textContent = comment.text;
+            commentText.style.marginBottom = '5px';
+
+            const likesCount = document.createElement('div');
+            likesCount.className = 'likes-count';
+            likesCount.textContent = `👍 ${comment.likes}`;
+            likesCount.style.color = '#666';
+            likesCount.style.fontSize = '0.9em';
+
+            commentElement.appendChild(commentText);
+            commentElement.appendChild(likesCount);
+            commentsContent.appendChild(commentElement);
+        });
+
+        // 设置评论区样式
+        commentsContent.style.maxHeight = '300px';
+        commentsContent.style.overflowY = 'auto';
+        commentsContent.style.padding = '10px';
+    };
+    
+    // 初始化第一轮
+    initializeRound();
+    
+    // 显示第一轮的 facts
+    const factsText = document.querySelector('.facts-text');
+    if (factsText) {
+        factsText.textContent = roundFacts[0] || '';
+    }
+    
+    // 确保评论区和弹幕功能正常工作
+    const checkCommentsAndDanmaku = () => {
+        // 检查评论区容器
+        const commentsContent = document.querySelector('.comments-content');
+        if (!commentsContent) {
+            console.error('未找到评论容器元素 .comments-content');
+        } else {
+            console.log('评论容器已找到');
+        }
+        
+        // 检查是否有弹幕容器
+        const danmakuContainers = document.querySelectorAll('.danmaku-container');
+        if (danmakuContainers.length === 0) {
+            console.log('当前没有弹幕容器，这是正常的，因为还没有上传视频');
+        } else {
+            console.log(`找到 ${danmakuContainers.length} 个弹幕容器`);
+        }
+        
+        // 检查评论数据是否完整
+        for (let i = 0; i < 5; i++) {
+            const types = ['positive', 'negative', 'unprejudiced'];
+            types.forEach(type => {
+                const comments = commentsData[i] && commentsData[i][type];
+                console.log(`Round ${i+1} ${type} comments: ${comments ? comments.length : '无'}`);
+            });
+        }
+    };
+    
+    // 在页面加载完成后执行检查
+    setTimeout(checkCommentsAndDanmaku, 2000);
+    
+    console.log('拖拽功能初始化完成');
+
+    const enableClipSlot = (slot) => {
+        slot.classList.remove('disabled');
+        slot.setAttribute('draggable', 'true');
+        console.log('Restored clip slot to normal state');
+    };
+    
+    const disableClipSlot = (slot) => {
+        slot.classList.add('disabled');
+        slot.setAttribute('draggable', 'false');
+        console.log('Disabled clip slot');
+    };
+
+    if (uploadButton) {
+        uploadButton.addEventListener('click', () => {
+            console.log('Upload button clicked in drag.js');
+            
+            // 获取当前的视频序列和标题
+            const filledSlots = Array.from(clipSlots).filter(slot => slot.classList.contains('filled') && !slot.classList.contains('disabled'));
+            let sequence = '';
+            const videoSources = [];
+            
+            filledSlots.forEach(slot => {
+                const video = slot.querySelector('video');
+                if (video && video.dataset.thumbnailId) {
+                    const thumbnailNum = video.dataset.thumbnailId.split('-')[1];
+                    sequence += (parseInt(thumbnailNum) + 1);
+                    
+                    // 保存视频源
+                    const source = video.querySelector('source');
+                    if (source) {
+                        videoSources.push(source.src);
+                    }
+                }
+            });
+
+            console.log('Video sequence:', sequence);
+            console.log('Video sources:', videoSources);
+
+            // 获取当前标题
+            const currentTitle = clipTitles[currentRound][sequence];
+            
+            // 清除所有弹幕容器
+            const danmakuContainers = document.querySelectorAll('.danmaku-container');
+            danmakuContainers.forEach(container => container.remove());
+            
+            // 隐藏预览区域
+            previewArea.style.display = 'none';
+            
+            // 创建并显示过渡页面
+            const transitionPage = document.createElement('div');
+            transitionPage.className = 'subtract-parent';
+            
+            // 添加 Subtract 图标
+            const subtractIcon = document.createElement('img');
+            subtractIcon.className = 'subtract-icon';
+            subtractIcon.alt = '';
+            subtractIcon.src = 'Subtract.svg';
+            
+            // 添加箭头图标
+            const arrowIcon = document.createElement('img');
+            arrowIcon.className = 'frame-child';
+            arrowIcon.alt = '';
+            arrowIcon.src = 'Arrow 2.svg';
+            
+            // 添加文本
+            const text = document.createElement('div');
+            text.className = 'as-you-can';
+            text.textContent = 'As you can see, here\'s the round you\'re in!';
+            
+            // 创建视频播放容器
+            const videoContainer = document.createElement('div');
+            videoContainer.className = 'transition-video-container';
+            
+            // 创建视频元素
+            const videoElement = document.createElement('video');
+            videoElement.className = 'transition-video';
+            videoElement.muted = false;
+            videoElement.controls = false;
+            
+            // 创建进度条
+            const progressBar = document.createElement('div');
+            progressBar.className = 'transition-progress';
+            
+            // 创建控制栏
+            const controlsBar = document.createElement('div');
+            controlsBar.className = 'transition-controls';
+            
+            // 将视频元素和控制栏添加到容器中
+            videoContainer.appendChild(videoElement);
+            videoContainer.appendChild(progressBar);
+            videoContainer.appendChild(controlsBar);
+            
+            // 组装页面
+            transitionPage.appendChild(subtractIcon);
+            transitionPage.appendChild(arrowIcon);
+            transitionPage.appendChild(text);
+            transitionPage.appendChild(videoContainer);
+            
+            document.body.appendChild(transitionPage);
+            
+            // 当前播放的视频索引
+            let currentVideoIndex = 0;
+            
+            // 播放下一个视频的函数
+            const playNextVideo = () => {
+                if (currentVideoIndex < videoSources.length) {
+                    console.log('Playing video:', currentVideoIndex + 1, 'of', videoSources.length);
+                    // 设置视频源
+                    videoElement.src = videoSources[currentVideoIndex];
+                    
+                    // 播放视频
+                    videoElement.play().catch(e => {
+                        console.error('视频播放失败:', e);
+                        // 如果自动播放失败，添加点击播放按钮
+                        const playButton = document.createElement('button');
+                        playButton.textContent = '点击播放';
+                        playButton.style.position = 'absolute';
+                        playButton.style.top = '50%';
+                        playButton.style.left = '50%';
+                        playButton.style.transform = 'translate(-50%, -50%)';
+                        playButton.style.padding = '10px 20px';
+                        playButton.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+                        playButton.style.border = 'none';
+                        playButton.style.borderRadius = '5px';
+                        playButton.style.cursor = 'pointer';
+                        
+                        playButton.addEventListener('click', () => {
+                            videoElement.play().catch(e => console.error('再次播放失败:', e));
+                            playButton.remove();
+                        });
+                        
+                        videoContainer.appendChild(playButton);
+                    });
+                    
+                    // 更新进度条
+                    videoElement.addEventListener('timeupdate', () => {
+                        const progress = (videoElement.currentTime / videoElement.duration) * 100;
+                        progressBar.style.width = `${progress}%`;
+                    });
+                    
+                    // 视频结束后播放下一个
+                    videoElement.addEventListener('ended', () => {
+                        currentVideoIndex++;
+                        if (currentVideoIndex < videoSources.length) {
+                            playNextVideo();
+                        } else {
+                            // 所有视频播放完毕，进入游戏主界面
+                            finishTransition();
+                        }
+                    }, { once: true });
+                }
+            };
+            
+            // 完成过渡，进入游戏主界面
+            const finishTransition = () => {
+                console.log('Transition finished, entering game screen');
+                transitionPage.remove();
+                
+                // 更新回合计数
+                currentRound++;
+                
+                // 更新总资金
+                if (currentTitle) {
+                    totalFunds += fundsMapping[currentRound-1][sequence];
+                }
+                
+                // 显示游戏主界面
+                document.getElementById('game-screen').style.display = 'block';
+                
+                // 更新进度计数
+                const progressCount = document.querySelector('.progress-count');
+                if (progressCount) {
+                    progressCount.textContent = `${currentRound}/5`;
+                }
+                
+                // 更新进度数字的激活状态
+                const progressNumbers = document.querySelectorAll('.number');
+                if (progressNumbers) {
+                    for (let i = 0; i < currentRound; i++) {
+                        if (i < progressNumbers.length) {
+                            progressNumbers[i].classList.add('active');
+                        }
+                    }
+                }
+                
+                // 确保启用New Post按钮
+                if (newPostButton) {
+                    newPostButton.style.pointerEvents = 'auto';
+                    newPostButton.style.opacity = '1';
+                    newPostButton.classList.add('enabled');
+                }
+                
+                // 保存当前回合的序列和标题
+                if (typeof window.roundSequences === 'undefined') {
+                    window.roundSequences = [];
+                }
+                window.roundSequences.push({
+                    round: currentRound-1,
+                    sequence: sequence,
+                    title: currentTitle,
+                    videoSources: videoSources
+                });
+                
+                // 尝试调用 script.js 中的 updateGameUI 函数
+                if (typeof window.updateGameUI === 'function') {
+                    console.log('Calling window.updateGameUI from drag.js');
+                    window.updateGameUI(currentTitle);
+                } else {
+                    console.log('window.updateGameUI not found, using local implementation');
+                    // 本地实现更新 UI 的逻辑
+                    // 更新moral图标
+                    const moralityMeter = document.querySelector('.morality-meter');
+                    if (moralityMeter && currentTitle) {
+                        const meterContent = moralityMeter.querySelector('.meter');
+                        if (meterContent) {
+                            meterContent.innerHTML = '';
+                            
+                            // 创建图标容器
+                            const iconContainer = document.createElement('div');
+                            iconContainer.className = 'moral-icon';
+                            
+                            // 根据视频类型设置不同的图标
+                            if (currentTitle.type === 'positive') {
+                                iconContainer.innerHTML = `<img src="up.svg" alt="Positive" width="100%" height="100%">`;
+                            } else if (currentTitle.type === 'negative') {
+                                iconContainer.innerHTML = `<img src="down1.svg" alt="Negative" width="100%" height="100%">`;
+                            } else {
+                                iconContainer.innerHTML = `<img src="flat.svg" alt="Neutral" width="100%" height="100%">`;
+                            }
+                            
+                            meterContent.appendChild(iconContainer);
+                        }
+                    }
+                    
+                    // 更新资金显示
+                    const fundsMeter = document.querySelector('.funds-meter');
+                    if (fundsMeter) {
+                        fundsMeter.innerHTML = '';
+                        const currentFundsSpan = document.createElement('span');
+                        currentFundsSpan.className = 'current-funds';
+                        currentFundsSpan.textContent = totalFunds;
+                        fundsMeter.appendChild(currentFundsSpan);
+                    }
+                    
+                    // 更新观看量 - 使用动态计算的值
+                    const viewsCount = document.querySelector('.views-count');
+                    if (viewsCount && currentTitle) {
+                        // 根据回合数和类型设置不同的观看量
+                        let views = 0;
+                        if (currentRound === 1) {
+                            views = currentTitle.type === 'positive' ? 5000 : 
+                                   currentTitle.type === 'negative' ? 15000 : 8000;
+                        } else if (currentRound === 2) {
+                            views = currentTitle.type === 'positive' ? 12000 : 
+                                   currentTitle.type === 'negative' ? 30000 : 18000;
+                        } else if (currentRound === 3) {
+                            views = currentTitle.type === 'positive' ? 25000 : 
+                                   currentTitle.type === 'negative' ? 60000 : 35000;
+                        } else if (currentRound === 4) {
+                            views = currentTitle.type === 'positive' ? 50000 : 
+                                   currentTitle.type === 'negative' ? 120000 : 70000;
+                        } else if (currentRound === 5) {
+                            views = currentTitle.type === 'positive' ? 100000 : 
+                                   currentTitle.type === 'negative' ? 250000 : 150000;
+                        }
+                        
+                        console.log('Setting views count to:', views.toLocaleString(), 'for round:', currentRound, 'type:', currentTitle.type);
+                        
+                        // 格式化观看量显示
+                        viewsCount.textContent = views.toLocaleString();
+                        
+                        // 保存当前视图数据，防止被 updateMainScreenVideo 覆盖
+                        viewsCount.dataset.currentViews = views.toLocaleString();
+                    }
+                }
+                
+                // 更新主界面视频封面和标题
+                updateMainScreenVideo();
+                
+                // 检查是否是第三回合结束且为negative类型
+                if (currentRound === 3 && currentTitle.type === 'negative') {
+                    setTimeout(() => {
+                        showPhoneCallModal();
+                    }, 1500);
+                }
+            };
+            
+            // 添加跳过按钮
+            const skipButton = document.createElement('button');
+            skipButton.textContent = '跳过';
+            skipButton.style.padding = '5px 15px';
+            skipButton.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+            skipButton.style.border = 'none';
+            skipButton.style.borderRadius = '5px';
+            skipButton.style.cursor = 'pointer';
+            skipButton.style.margin = '0 10px';
+            
+            skipButton.addEventListener('click', () => {
+                videoElement.pause();
+                finishTransition();
+            });
+            
+            controlsBar.appendChild(skipButton);
+            
+            // 开始播放第一个视频
+            playNextVideo();
+        });
+    }
+
+    // 监听自定义事件
+    document.addEventListener('uploadButtonClicked', () => {
+        console.log('Custom event uploadButtonClicked triggered');
+        
+        // 获取当前的视频序列和标题
+        const filledSlots = Array.from(clipSlots).filter(slot => slot.classList.contains('filled') && !slot.classList.contains('disabled'));
+        let sequence = '';
+        const videoSources = [];
+        
+        filledSlots.forEach(slot => {
+            const video = slot.querySelector('video');
+            if (video && video.dataset.thumbnailId) {
+                const thumbnailNum = video.dataset.thumbnailId.split('-')[1];
+                sequence += (parseInt(thumbnailNum) + 1);
+                
+                // 保存视频源
+                const source = video.querySelector('source');
+                if (source) {
+                    videoSources.push(source.src);
+                }
+            }
+        });
+
+        console.log('Custom event - Video sequence:', sequence);
+        console.log('Custom event - Video sources:', videoSources);
+
+        // 获取当前标题
+        const currentTitle = clipTitles[currentRound][sequence];
+        
+        // 清除所有弹幕容器
+        const danmakuContainers = document.querySelectorAll('.danmaku-container');
+        danmakuContainers.forEach(container => container.remove());
+        
+        // 隐藏预览区域
+        previewArea.style.display = 'none';
+        
+        // 创建并显示过渡页面
+        const transitionPage = document.createElement('div');
+        transitionPage.className = 'subtract-parent';
+        
+        // 添加 Subtract 图标
+        const subtractIcon = document.createElement('img');
+        subtractIcon.className = 'subtract-icon';
+        subtractIcon.alt = '';
+        subtractIcon.src = 'Subtract.svg';
+        
+        // 添加箭头图标
+        const arrowIcon = document.createElement('img');
+        arrowIcon.className = 'frame-child';
+        arrowIcon.alt = '';
+        arrowIcon.src = 'Arrow 2.svg';
+        
+        // 添加文本
+        const text = document.createElement('div');
+        text.className = 'as-you-can';
+        text.textContent = 'As you can see, here\'s the round you\'re in!';
+        
+        // 创建视频播放容器
+        const videoContainer = document.createElement('div');
+        videoContainer.className = 'transition-video-container';
+        
+        // 创建视频元素
+        const videoElement = document.createElement('video');
+        videoElement.className = 'transition-video';
+        videoElement.muted = false;
+        videoElement.controls = false;
+        
+        // 创建进度条
+        const progressBar = document.createElement('div');
+        progressBar.className = 'transition-progress';
+        
+        // 创建控制栏
+        const controlsBar = document.createElement('div');
+        controlsBar.className = 'transition-controls';
+        
+        // 将视频元素和控制栏添加到容器中
+        videoContainer.appendChild(videoElement);
+        videoContainer.appendChild(progressBar);
+        videoContainer.appendChild(controlsBar);
+        
+        // 组装页面
+        transitionPage.appendChild(subtractIcon);
+        transitionPage.appendChild(arrowIcon);
+        transitionPage.appendChild(text);
+        transitionPage.appendChild(videoContainer);
+        
+        document.body.appendChild(transitionPage);
+        
+        // 当前播放的视频索引
+        let currentVideoIndex = 0;
+        
+        // 播放下一个视频的函数
+        const playNextVideo = () => {
+            if (currentVideoIndex < videoSources.length) {
+                console.log('Custom event - Playing video:', currentVideoIndex + 1, 'of', videoSources.length);
+                // 设置视频源
+                videoElement.src = videoSources[currentVideoIndex];
+                
+                // 播放视频
+                videoElement.play().catch(e => {
+                    console.error('视频播放失败:', e);
+                    // 如果自动播放失败，添加点击播放按钮
+                    const playButton = document.createElement('button');
+                    playButton.textContent = '点击播放';
+                    playButton.style.position = 'absolute';
+                    playButton.style.top = '50%';
+                    playButton.style.left = '50%';
+                    playButton.style.transform = 'translate(-50%, -50%)';
+                    playButton.style.padding = '10px 20px';
+                    playButton.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+                    playButton.style.border = 'none';
+                    playButton.style.borderRadius = '5px';
+                    playButton.style.cursor = 'pointer';
+                    
+                    playButton.addEventListener('click', () => {
+                        videoElement.play().catch(e => console.error('再次播放失败:', e));
+                        playButton.remove();
+                    });
+                    
+                    videoContainer.appendChild(playButton);
+                });
+                
+                // 更新进度条
+                videoElement.addEventListener('timeupdate', () => {
+                    const progress = (videoElement.currentTime / videoElement.duration) * 100;
+                    progressBar.style.width = `${progress}%`;
+                });
+                
+                // 视频结束后播放下一个
+                videoElement.addEventListener('ended', () => {
+                    currentVideoIndex++;
+                    if (currentVideoIndex < videoSources.length) {
+                        playNextVideo();
+                    } else {
+                        // 所有视频播放完毕，进入游戏主界面
+                        finishTransition();
+                    }
+                }, { once: true });
+            }
+        };
+        
+        // 完成过渡，进入游戏主界面
+        const finishTransition = () => {
+            console.log('Custom event - Transition finished, entering game screen');
+            transitionPage.remove();
+            
+            // 更新回合计数
+            currentRound++;
+            
+            // 更新总资金
+            if (currentTitle) {
+                totalFunds += fundsMapping[currentRound-1][sequence];
+            }
+            
+            // 显示游戏主界面
+            document.getElementById('game-screen').style.display = 'block';
+            
+            // 更新进度计数
+            const progressCount = document.querySelector('.progress-count');
+            if (progressCount) {
+                progressCount.textContent = `${currentRound}/5`;
+            }
+            
+            // 更新进度数字的激活状态
+            const progressNumbers = document.querySelectorAll('.number');
+            if (progressNumbers) {
+                for (let i = 0; i < currentRound; i++) {
+                    if (i < progressNumbers.length) {
+                        progressNumbers[i].classList.add('active');
+                    }
+                }
+            }
+            
+            // 确保启用New Post按钮
+            if (newPostButton) {
+                newPostButton.style.pointerEvents = 'auto';
+                newPostButton.style.opacity = '1';
+                newPostButton.classList.add('enabled');
+            }
+            
+            // 更新moral图标
+            const moralityMeter = document.querySelector('.morality-meter');
+            if (moralityMeter) {
+                const meterContent = moralityMeter.querySelector('.meter');
+                if (meterContent) {
+                    meterContent.innerHTML = '';
+                    
+                    // 创建图标容器
+                    const iconContainer = document.createElement('div');
+                    iconContainer.className = 'moral-icon';
+                    
+                    // 根据视频类型设置不同的图标
+                    if (currentTitle.type === 'positive') {
+                        iconContainer.innerHTML = `<img src="up.svg" alt="Positive" width="100%" height="100%">`;
+                    } else if (currentTitle.type === 'negative') {
+                        iconContainer.innerHTML = `<img src="down1.svg" alt="Negative" width="100%" height="100%">`;
+                    } else {
+                        iconContainer.innerHTML = `<img src="flat.svg" alt="Neutral" width="100%" height="100%">`;
+                    }
+                    
+                    meterContent.appendChild(iconContainer);
+                }
+            }
+            
+            // 更新资金显示
+            const fundsMeter = document.querySelector('.funds-meter');
+            if (fundsMeter) {
+                fundsMeter.innerHTML = '';
+                const currentFundsSpan = document.createElement('span');
+                currentFundsSpan.className = 'current-funds';
+                currentFundsSpan.textContent = totalFunds;
+                fundsMeter.appendChild(currentFundsSpan);
+            }
+            
+            // 更新主界面视频封面和标题
+            updateMainScreenVideo();
+            
+            // 检查是否是第三回合结束且为negative类型
+            if (currentRound === 3 && currentTitle.type === 'negative') {
+                setTimeout(() => {
+                    showPhoneCallModal();
+                }, 1500);
+            }
+        };
+        
+        // 添加跳过按钮
+        const skipButton = document.createElement('button');
+        skipButton.textContent = '跳过';
+        skipButton.style.padding = '5px 15px';
+        skipButton.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+        skipButton.style.border = 'none';
+        skipButton.style.borderRadius = '5px';
+        skipButton.style.cursor = 'pointer';
+        skipButton.style.margin = '0 10px';
+        
+        skipButton.addEventListener('click', () => {
+            videoElement.pause();
+            finishTransition();
+        });
+        
+        controlsBar.appendChild(skipButton);
+        
+        // 开始播放第一个视频
+        playNextVideo();
+    });
+}); 

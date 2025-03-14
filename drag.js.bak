@@ -1,0 +1,1234 @@
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Initializing drag and drop functionality...');
+    
+    // 定义评论数据
+    const commentsData = {
+        0: { // 第一轮评论
+            'positive': [
+                { text: "This actor is so professional!", likes: 245 },
+                { text: "Can't wait for the new movie!", likes: 189 },
+                { text: "Great to see him working with new talent!", likes: 156 },
+                { text: "His career is really taking off!", likes: 132 }
+            ],
+            'neutral': [
+                { text: "Who is this woman? Anyone know?", likes: 87 },
+                { text: "Interesting meeting, wonder what they're discussing", likes: 65 },
+                { text: "Just a casual coffee meeting I guess", likes: 43 },
+                { text: "Not sure what to make of this", likes: 29 }
+            ],
+            'negative': [
+                { text: "Something fishy going on here...", likes: 312 },
+                { text: "Doesn't look like a professional meeting to me", likes: 278 },
+                { text: "His wife won't be happy about this!", likes: 245 },
+                { text: "Another scandal brewing?", likes: 198 }
+            ]
+        },
+        1: { // 第二轮评论
+            'positive': [
+                { text: "This restaurant is doing amazing charity work!", likes: 267 },
+                { text: "More businesses should follow this example", likes: 213 },
+                { text: "Heartwarming to see this kind of initiative", likes: 178 },
+                { text: "I'm definitely going to support this place", likes: 145 }
+            ],
+            'neutral': [
+                { text: "Interesting concept for a restaurant", likes: 76 },
+                { text: "Wonder how sustainable this model is", likes: 58 },
+                { text: "Seems like a decent initiative", likes: 47 },
+                { text: "I'd like to know more details about how it works", likes: 35 }
+            ],
+            'negative': [
+                { text: "All for show - they're not really helping anyone", likes: 289 },
+                { text: "Did you see how they treated that worker?", likes: 256 },
+                { text: "This is just PR, don't be fooled", likes: 234 },
+                { text: "They turn people away when cameras aren't rolling", likes: 187 }
+            ]
+        },
+        2: { // 第三轮评论
+            'positive': [
+                { text: "That delivery man is a hero!", likes: 298 },
+                { text: "So quick to help, we need more people like this", likes: 245 },
+                { text: "Restored my faith in humanity", likes: 213 },
+                { text: "True kindness in action", likes: 176 }
+            ],
+            'neutral': [
+                { text: "Hard to tell exactly what happened", likes: 89 },
+                { text: "Could be an accident, could be more to it", likes: 67 },
+                { text: "Situations like this are complicated", likes: 54 },
+                { text: "Let's not jump to conclusions", likes: 42 }
+            ],
+            'negative': [
+                { text: "Hit and run! Absolutely disgraceful", likes: 345 },
+                { text: "How could he just leave like that?", likes: 312 },
+                { text: "These delivery drivers are always reckless", likes: 287 },
+                { text: "Should lose his job for this", likes: 243 }
+            ]
+        },
+        3: { // 第四轮评论
+            'positive': [
+                { text: "This nursing home really cares about safety", likes: 276 },
+                { text: "The staff are so attentive and kind", likes: 234 },
+                { text: "Great to see such good care for the elderly", likes: 198 },
+                { text: "My grandma is in this home and they're wonderful", likes: 165 }
+            ],
+            'neutral': [
+                { text: "Standard procedures for nursing homes", likes: 78 },
+                { text: "They're doing their job, nothing special", likes: 65 },
+                { text: "Adequate care from what I can see", likes: 52 },
+                { text: "Better than some places, worse than others", likes: 41 }
+            ],
+            'negative': [
+                { text: "They're basically prisoners in there", likes: 324 },
+                { text: "How did the elderly person get out in the first place?", likes: 298 },
+                { text: "Neglect and then forceful return - shameful", likes: 267 },
+                { text: "This is why I'd never put my parents in a home", likes: 231 }
+            ]
+        },
+        4: { // 第五轮评论
+            'positive': [
+                { text: "Finally a politician who delivers on promises!", likes: 312 },
+                { text: "The improvements are really visible", likes: 278 },
+                { text: "My aunt lives here and says it's much better now", likes: 245 },
+                { text: "Setting a new standard for elder care", likes: 213 }
+            ],
+            'neutral': [
+                { text: "Some improvements but still work to be done", likes: 87 },
+                { text: "Let's see if these changes last after the election", likes: 76 },
+                { text: "Better than before but not perfect", likes: 65 },
+                { text: "Cautiously optimistic about these changes", likes: 54 }
+            ],
+            'negative': [
+                { text: "Pure political theater while elderly suffer", likes: 356 },
+                { text: "Look at the lonely person in the corner - nobody cares!", likes: 324 },
+                { text: "All talk, no real action", likes: 298 },
+                { text: "Using vulnerable elderly for a photo op - disgusting", likes: 267 }
+            ]
+        }
+    };
+    
+    // Get all thumbnails and editing area clips
+    const thumbnails = document.querySelectorAll('.thumbnail');
+    const clipSlots = document.querySelectorAll('.clip-slot');
+    const editingArea = document.querySelector('.editing-area');
+    const clipsContainer = document.querySelector('.clips');
+    const reviewingArea = document.querySelector('.reviewing-area');
+    const exportButton = document.querySelector('.export-button');
+    const previewArea = document.querySelector('.preview-area');
+    const backButton = document.querySelector('.back-button');
+    const newPostButton = document.querySelector('.new-post-button');
+
+    // Track used thumbnails
+    const usedThumbnails = new Set();
+    
+    // Track current round and funds
+    let currentRound = 0;
+    let totalFunds = 0;
+    
+    // 跟踪是否已经开始游戏（是否已经尝试过拖动）
+    let gameStarted = false;
+    
+    // Enable New Post button on initialization
+    if (newPostButton) {
+        newPostButton.style.opacity = '1';
+        newPostButton.style.pointerEvents = 'auto';
+        console.log('New Post button enabled');
+    }
+    
+    // Track video sequences for each round
+    const roundSequences = [];
+    
+    // Define video materials for each round
+    const roundVideos = {
+        0: ['r1c1.mp4', 'r1c2.mp4', 'r1c3.mp4', 'r1c4.mp4'],
+        1: ['r2c1.mp4', 'r2c2.mp4', 'r2c3.mp4'],
+        2: ['r3c1.mp4', 'r3c2.mp4', 'r3c3.mp4', 'r3c4.mp4'],
+        3: ['r4c1.mp4', 'r4c2.mp4', 'r4c3.mp4'],
+        4: ['r5c1.mp4', 'r5c2.mp4', 'r5c3.mp4', 'r5c4.mp4']
+    };
+    
+    // Define video descriptions for each round
+    const videoDescriptions = {
+        0: {
+            'r1c1.mp4': 'The actor is having a casual conversation with a lady',
+            'r1c2.mp4': 'The lady suddenly spills her coffee',
+            'r1c3.mp4': 'The lady starts crying',
+            'r1c4.mp4': 'The actor comforts the lady'
+        },
+        1: {
+            'r2c1.mp4': 'The worker asks about the charity meal program',
+            'r2c2.mp4': 'The waiter hands a note to the worker',
+            'r2c3.mp4': 'The waiter points outside the restaurant'
+        },
+        2: {
+            'r3c1.mp4': 'The elderly person lies motionless on the ground',
+            'r3c2.mp4': 'The delivery man brakes suddenly causing the motorcycle to fall',
+            'r3c3.mp4': 'Someone reaches out to help the elderly person up',
+            'r3c4.mp4': 'The delivery man rides away'
+        },
+        3: {
+            'r4c1.mp4': 'The elderly slowly pushes a walker and exits the nursing home gate.',
+            'r4c2.mp4': 'Noticing this, the caregiver gently holds the elderly\'s arm and leads them back.',
+            'r4c3.mp4': 'The caregiver asks kindly, gesturing for the elderly to return and rest.'
+        },
+        4: {
+            'r5c1.mp4': 'The candidate enters the nursing home, shaking hands with the staff.',
+            'r5c2.mp4': 'The candidate engages in conversation with several elderly residents.',
+            'r5c3.mp4': 'In the corner of the hallway, an elderly person sits alone.',
+            'r5c4.mp4': 'The candidate speaks: "The improvement of nursing homes will not stop. We will continue our efforts."'
+        }
+    };
+    
+    // Define round titles
+    const roundTitles = {
+        0: "Round1: Actor's scandal",
+        1: "Round2: Public welfare illusion",
+        2: "Round3: Hospital Incident",
+        3: "Round4: Nursing Home Care",
+        4: "Round5: Political Visit"
+    };
+
+    // Define round facts
+    const roundFacts = {
+        0: "Actor discusses movie deal with new agent at cafe",
+        1: "The restaurant has set up a new \"Charity Window\" where people in need can receive free meals with their meal tickets.",
+        2: "The delivery man witnesses an elderly person falling and tries to react.",
+        3: "The elderly person who was knocked down had gone missing from a nursing home. He attempted to leave the nursing home once again, and the caregiver tried to bring him back.",
+        4: "The mayoral candidate and chairman of a nursing home corporation visits a nursing home as part of his campaign."
+    };
+
+    // Define views mapping
+    const viewsMapping = {
+        // Round 1
+        0: {
+        '1234': '100',
+        '134': '100',
+        '1342': '999+',
+        '1324': '999+',
+        '123': '999+',
+        '132': '999+',
+        '1432': '9999+',
+        '1423': '9999+',
+        '143': '9999+',
+            '1243': '9999+',
+        '124': '9999+',
+            '142': '9999+'
+        },
+        
+        // 第二轮
+        1: {
+        '123': '100',
+        '213': '100',
+        '231': '100',
+        '12': '100',
+            '23': '100',
+        '13': '9999+',
+        '132': '9999+',
+            '32': '9999+',
+        '312': '100',
+        '321': '100',
+        '31': '100',
+        '21': '100'
+        },
+        
+        // 第三轮
+        2: {
+            '1234': '100',
+            '1243': '999+',
+            '2134': '999+',
+            '2143': '9999+',
+            '2413': '9999+',
+            '1324': '100',
+            '1342': '100',
+            '1423': '100',
+            '1432': '100',
+            '2314': '100',
+            '2341': '100',
+            '2431': '100',
+            '3124': '100',
+            '3142': '100',
+            '3214': '100',
+            '3241': '100',
+            '3412': '100',
+            '3421': '100',
+            '4123': '100',
+            '4132': '100',
+            '4213': '100',
+            '4231': '100',
+            '4312': '100',
+            '4321': '100'
+        },
+        
+        // 第四轮
+        3: {
+            '123': '100',
+            '132': '100',
+            '312': '100',
+            '12': '100',
+            '13': '100',
+            '231': '9999+',
+            '321': '9999+',
+            '31': '9999+',
+            '21': '9999+',
+            '213': '100',
+            '23': '100',
+            '32': '100'
+        },
+        
+        // 第五轮
+        4: {
+            '1243': '100',
+            '1234': '999+',
+            '1342': '9999+',
+            '1432': '9999+',
+            '1423': '9999+',
+            '1324': '9999+'
+        }
+    };
+
+    // 定义资金映射
+    const fundsMapping = {
+        // 第一轮
+        0: {
+            '1234': 1000,
+            '134': 1000,
+            '1342': 2000,
+            '1324': 2000,
+            '123': 2000,
+            '132': 2000,
+            '1432': 4000,
+            '1423': 4000,
+            '143': 4000,
+            '1243': 4000,
+            '124': 4000,
+            '142': 4000
+        },
+        
+        // 第二轮
+        1: {
+        '123': 1000,
+        '213': 1000,
+        '231': 1000,
+        '12': 1000,
+            '23': 1000,
+        '13': 4000,
+        '132': 4000,
+            '32': 4000,
+        '312': 100,
+        '321': 100,
+        '31': 100,
+        '21': 100
+        },
+        
+        // 第三轮
+        2: {
+            '1234': 1000,
+            '1243': 2000,
+            '2134': 2000,
+            '2143': 4000,
+            '2413': 4000,
+            '1324': 100,
+            '1342': 100,
+            '1423': 100,
+            '1432': 100,
+            '2314': 100,
+            '2341': 100,
+            '2431': 100,
+            '3124': 100,
+            '3142': 100,
+            '3214': 100,
+            '3241': 100,
+            '3412': 100,
+            '3421': 100,
+            '4123': 100,
+            '4132': 100,
+            '4213': 100,
+            '4231': 100,
+            '4312': 100,
+            '4321': 100
+        },
+        
+        // 第四轮
+        3: {
+            '123': 1000,
+            '132': 1000,
+            '312': 1000,
+            '12': 1000,
+            '13': 1000,
+            '231': 4000,
+            '321': 4000,
+            '31': 4000,
+            '21': 4000,
+            '213': 100,
+            '23': 100,
+            '32': 100
+        },
+        
+        // 第五轮
+        4: {
+            '1243': 1000,
+            '1234': 2000,
+            '1342': 4000,
+            '1432': 4000,
+            '1423': 4000,
+            '1324': 4000
+        }
+    };
+
+    // 定义视频序列对应的标题
+    const clipTitles = {
+        // 第一轮
+        0: {
+        '1234': {
+                text: '"New agent exposure, actor suspected to prepare a new movie!"',
+            type: 'positive'
+        },
+        '134': {
+                text: '"New agent exposure, actor suspected to prepare a new movie!"',
+            type: 'positive'
+        },
+        '1342': {
+                text: '"Who is the Strange Woman? Crying after spilling coffee"',
+                type: 'neutral'
+        },
+        '1324': {
+                text: '"Who is the Strange Woman? Crying after spilling coffee"',
+                type: 'neutral'
+        },
+        '123': {
+                text: '"Who is the Strange Woman? Crying after spilling coffee"',
+                type: 'neutral'
+        },
+        '132': {
+                text: '"Who is the Strange Woman? Crying after spilling coffee"',
+                type: 'neutral'
+        },
+        '1432': {
+                text: '"Male star and mysterious woman intimate interaction, suddenly threw coffee?"',
+                type: 'negative'
+        },
+        '1423': {
+                text: '"Male star and mysterious woman intimate interaction, suddenly threw coffee?"',
+                type: 'negative'
+        },
+        '143': {
+                text: '"Male star and mysterious woman intimate interaction, suddenly threw coffee?"',
+            type: 'negative'
+        },
+            '1243': {
+                text: '"Male star and mysterious woman intimate interaction, suddenly threw coffee?"',
+            type: 'negative'
+        },
+            '124': {
+                text: '"Male star and mysterious woman intimate interaction"',
+            type: 'negative'
+        },
+            '142': {
+                text: '"Male star and mysterious woman intimate interaction"',
+            type: 'negative'
+            }
+        },
+        
+        // 第二轮
+        1: {
+        '123': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'positive'
+        },
+        '213': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'positive'
+        },
+        '231': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'positive'
+        },
+        '12': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'positive'
+        },
+            '23': {
+                text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+                type: 'positive'
+            },
+        '13': {
+            text: '"The worker inquired about the charity meal but was unexpectedly driven away by the waiter?"',
+            type: 'negative'
+        },
+        '132': {
+            text: '"The worker inquired about the charity meal but was unexpectedly driven away by the waiter?"',
+            type: 'negative'
+        },
+            '32': {
+                text: '"The worker inquired about the charity meal but was unexpectedly driven away by the waiter?"',
+                type: 'negative'
+            },
+        '312': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'neutral'
+        },
+        '321': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'neutral'
+        },
+        '31': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'neutral'
+        },
+        '21': {
+            text: '"The restaurant fulfills its public welfare commitment, and the charity window warms people\'s hearts!"',
+            type: 'neutral'
+            }
+        },
+        
+        // 第三轮
+        2: {
+            '1234': {
+                text: '"Delivery man rushes to aid fallen elderly, good deed earns praise from netizens!"',
+                type: 'positive'
+            },
+            '1243': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '2134': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '2143': {
+                text: '"Delivery man flees after hitting elderly? Netizens outraged: \'Totally irresponsible!\'"',
+                type: 'negative'
+            },
+            '2413': {
+                text: '"Delivery man flees after hitting elderly? Netizens outraged: \'Totally irresponsible!\'"',
+                type: 'negative'
+            },
+            '1324': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '1342': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '1423': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '1432': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '2314': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '2341': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '2431': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3124': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3142': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3214': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3241': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3412': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '3421': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4123': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4132': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4213': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4231': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4312': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            },
+            '4321': {
+                text: '"Accident or mishap? Delivery man knocking over elderly sparks heated debate!"',
+                type: 'neutral'
+            }
+        },
+        
+        // 第四轮
+        3: {
+            '123': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'positive'
+            },
+            '132': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'positive'
+            },
+            '312': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'positive'
+            },
+            '12': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'positive'
+            },
+            '13': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'positive'
+            },
+            '231': {
+                text: '"The nursing home caregiver fails in their duty again as the elderly person walks alone toward the gate!"',
+                type: 'negative'
+            },
+            '321': {
+                text: '"The nursing home caregiver fails in their duty again as the elderly person walks alone toward the gate!"',
+                type: 'negative'
+            },
+            '31': {
+                text: '"The nursing home caregiver fails in their duty again as the elderly person walks alone toward the gate!"',
+                type: 'negative'
+            },
+            '21': {
+                text: '"The nursing home caregiver fails in their duty again as the elderly person walks alone toward the gate!"',
+                type: 'negative'
+            },
+            '213': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'neutral'
+            },
+            '23': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'neutral'
+            },
+            '32': {
+                text: '"The nursing home strengthens its management to ensure the safety of every elderly resident!"',
+                type: 'neutral'
+            }
+        },
+        
+        // 第五轮
+        4: {
+            '1243': {
+                text: '"Candidate Delivers on Promises, Nursing Home Shows Real Improvement"',
+                type: 'positive'
+            },
+            '1234': {
+                text: '"Nursing Home Progress, But Challenges Remain"',
+                type: 'neutral'
+            },
+            '1342': {
+                text: '"Shocking Footage: Elderly Left Uncared for While Candidate Speaks"',
+                type: 'negative'
+            },
+            '1432': {
+                text: '"Shocking Footage: Elderly Left Uncared for While Candidate Speaks"',
+                type: 'negative'
+            },
+            '1423': {
+                text: '"Shocking Footage: Elderly Left Uncared for While Candidate Speaks"',
+                type: 'negative'
+            },
+            '1324': {
+                text: '"Shocking Footage: Elderly Left Uncared for While Candidate Speaks"',
+                type: 'negative'
+            }
+        }
+    };
+
+    // 确保找到所有必要的元素
+    if (thumbnails.length > 0) {
+        console.log(`Found ${thumbnails.length} thumbnails`);
+    } else {
+        console.error('No thumbnail elements found');
+    }
+    
+    if (clipSlots.length > 0) {
+        console.log(`Found ${clipSlots.length} clip slots`);
+    } else {
+        console.error('No clip-slot elements found');
+    }
+    
+    if (!editingArea) {
+        console.error('未找到editing-area元素');
+        return;
+    }
+
+    if (!reviewingArea) {
+        console.error('未找到reviewing-area元素');
+        return;
+    }
+
+    // 检查当前的视频顺序并显示对应的标题
+    const checkClipSequence = () => {
+        // 获取所有已填充的clip slots
+        const filledSlots = Array.from(clipSlots).filter(slot => slot.classList.contains('filled') && !slot.classList.contains('disabled'));
+        console.log(`Found ${filledSlots.length} filled slots`);
+        
+        // 计算需要填充的slot数量（不包括被禁用的）
+        const enabledSlots = Array.from(clipSlots).filter(slot => !slot.classList.contains('disabled'));
+        const requiredFilledCount = enabledSlots.length;
+        console.log(`Required filled count: ${requiredFilledCount}, Enabled slots: ${enabledSlots.length}`);
+        
+        if (filledSlots.length >= requiredFilledCount) {
+            // 获取当前的视频顺序
+            const sequence = filledSlots.map(slot => {
+                const video = slot.querySelector('video');
+                if (!video || !video.dataset.thumbnailId) return null;
+                
+                // 从thumbnailId中提取数字部分并加1
+                const thumbnailNum = video.dataset.thumbnailId.split('-')[1];
+                const sequenceNum = (parseInt(thumbnailNum) + 1).toString();
+                console.log(`Slot video ID: ${video.dataset.thumbnailId}, Sequence number: ${sequenceNum}`);
+                return sequenceNum;
+            }).filter(id => id !== null).join('');
+            
+            console.log('Current video sequence:', sequence);
+            console.log('Available titles for current round:', Object.keys(clipTitles[currentRound]));
+            
+            // 检查是否有匹配的标题
+            if (clipTitles[currentRound][sequence]) {
+                console.log(`Found matching title: ${clipTitles[currentRound][sequence].text}`);
+                showClipTitle(clipTitles[currentRound][sequence], sequence);
+            } else {
+                // 如果没有精确匹配，清除标题
+                console.log(`No matching title found for sequence: ${sequence}`);
+                clearClipTitle();
+            }
+        } else {
+            // 如果没有足够的clips，清除标题
+            console.log(`Not enough clips filled: ${filledSlots.length}/${requiredFilledCount}`);
+            clearClipTitle();
+        }
+    };
+    
+    // 显示剪辑标题
+    const showClipTitle = (titleData, sequence) => {
+        // 清除现有标题
+        clearClipTitle();
+        
+        // 创建标题元素
+        const titleElement = document.createElement('div');
+        titleElement.className = `clip-title ${titleData.type}`;
+        
+        // 获取浏览量数据
+        const views = viewsMapping[currentRound][sequence] || '';
+        
+        // 显示type和浏览量
+        titleElement.textContent = `${titleData.type.charAt(0).toUpperCase() + titleData.type.slice(1)} · Views: ${views}`;
+        
+        // 添加到reviewing area
+        reviewingArea.appendChild(titleElement);
+        
+        // 显示评论
+        showComments(currentRound, titleData.type);
+        console.log(`Showing comments: Round=${currentRound}, Type=${titleData.type}`);
+    };
+    
+    // 清除剪辑标题
+    const clearClipTitle = () => {
+        const existingTitle = reviewingArea.querySelector('.clip-title');
+        if (existingTitle) {
+            existingTitle.remove();
+        }
+    };
+
+    // Create alert box
+    const createAlert = (message) => {
+        const alert = document.createElement('div');
+        alert.style.position = 'fixed';
+        alert.style.top = '50%';
+        alert.style.left = '50%';
+        alert.style.transform = 'translate(-50%, -50%)';
+        alert.style.backgroundColor = '#fff';
+        alert.style.padding = '20px';
+        alert.style.borderRadius = '5px';
+        alert.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+        alert.style.zIndex = '1000';
+        alert.textContent = message;
+        
+        // Add close button
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'OK';
+        closeBtn.style.marginTop = '10px';
+        closeBtn.style.padding = '5px 15px';
+        closeBtn.style.display = 'block';
+        closeBtn.style.margin = '10px auto 0';
+        closeBtn.onclick = () => alert.remove();
+        
+        alert.appendChild(closeBtn);
+        document.body.appendChild(alert);
+        
+        // 3秒后自动关闭
+        setTimeout(() => alert.remove(), 3000);
+    };
+
+    // 初始化函数 - 根据当前回合设置初始状态
+    const initializeRound = () => {
+        console.log(`Initializing round ${currentRound + 1}...`);
+        
+        // 清除所有 slot 的内容和状态
+        clipSlots.forEach((slot, index) => {
+            // 保留第一轮第一个 slot 的内容
+            if (!(currentRound === 0 && index === 0)) {
+                slot.innerHTML = '';
+                slot.classList.remove('filled');
+            }
+            slot.classList.remove('disabled');
+        });
+        
+        // 第一轮或第五轮：自动填充第一个clip
+        if (currentRound === 0 || currentRound === 4) {
+            // 自动填充第一个clip
+            autoFillFirstClip();
+        } else {
+            // 非第一轮和第五轮：移除第一个clip slot的fixed类
+            if (clipSlots.length > 0) {
+                clipSlots[0].classList.remove('fixed');
+                console.log('Removed fixed class from the first clip slot');
+            }
+        }
+        
+        // 第二轮和第四轮：禁用第四个 slot
+        if (currentRound === 1 || currentRound === 3) {
+            // 禁用第四个 slot
+            if (clipSlots.length >= 4) {
+                clipSlots[3].classList.add('disabled');
+                console.log(`Round ${currentRound + 1}: Disabled 4th clip slot`);
+            }
+        }
+        
+        // 为所有空的slot添加rub图标（除非是第一轮或第五轮的第一个slot，或者是被禁用的slot）
+        clipSlots.forEach((slot, index) => {
+            if (!slot.classList.contains('filled') && !((currentRound === 0 || currentRound === 4) && index === 0) && !slot.classList.contains('disabled')) {
+                const rubIconBg = createRubIcon(slot);
+                slot.appendChild(rubIconBg);
+                console.log(`Added rub icon to slot ${index + 1}`);
+            }
+        });
+        
+        // 更新缩略图视频
+        updateThumbnailVideos(currentRound);
+    };
+
+    // 自动将第一个视频放入第一个clip slot
+    const autoFillFirstClip = () => {
+        // 只在第一轮和第五轮自动填充
+        if (currentRound !== 0 && currentRound !== 4) {
+            console.log('Not round 1 or 5, skipping auto-fill of first clip slot');
+            return;
+        }
+        
+        if (thumbnails.length > 0 && clipSlots.length > 0) {
+            const firstThumbnail = thumbnails[0];
+            const firstClipSlot = clipSlots[0];
+            
+            // 获取当前轮次的第一个视频源
+            const currentRoundVideos = roundVideos[currentRound];
+            if (currentRoundVideos && currentRoundVideos.length > 0) {
+                // 创建新的视频元素
+                const newVideo = document.createElement('video');
+                newVideo.className = 'clip-video';
+                newVideo.autoplay = true;
+                newVideo.loop = true;
+                newVideo.muted = true;
+                newVideo.playsinline = true;
+                newVideo.dataset.thumbnailId = firstThumbnail.id; // 存储原始缩略图ID
+                
+                // 添加视频源
+                const source = document.createElement('source');
+                source.src = currentRoundVideos[0]; // 使用当前轮次的第一个视频
+                source.type = 'video/mp4';
+                newVideo.appendChild(source);
+                
+                // 清空slot并添加视频
+                firstClipSlot.innerHTML = '';
+                firstClipSlot.appendChild(newVideo);
+                firstClipSlot.classList.add('filled');
+                firstClipSlot.classList.add('fixed');
+                
+                // 加载并播放视频
+                newVideo.load();
+                newVideo.play().catch(e => console.error('Video playback failed:', e));
+                
+                console.log(`Round ${currentRound + 1}: Auto-filled first clip slot with video: ${currentRoundVideos[0]}`);
+            }
+        }
+    };
+
+    // 创建rub图标
+    const createRubIcon = (slot) => {
+        const rubIconBg = document.createElement('div');
+        rubIconBg.className = 'rub-icon-bg';
+        
+        const rubIcon = document.createElement('div');
+        rubIcon.className = 'rub-icon';
+        
+        rubIconBg.appendChild(rubIcon);
+        
+        rubIconBg.addEventListener('click', () => {
+            // 检查 slot 是否已被禁用
+            if (slot.classList.contains('disabled')) {
+                // 如果已禁用，则恢复正常
+                slot.classList.remove('disabled');
+                console.log('Restored clip slot to normal state');
+            } else {
+                // 如果未禁用，则禁用它
+                slot.classList.add('disabled');
+                console.log('Disabled clip slot');
+            }
+            // 无论如何都要清空内容并保留 rub 图标
+            slot.innerHTML = '';
+            slot.classList.remove('filled');
+            const newRubIconBg = createRubIcon(slot);
+            slot.appendChild(newRubIconBg);
+            checkClipSequence();
+        });
+        
+        return rubIconBg;
+    };
+
+    // 为每个缩略图添加唯一ID和拖拽功能
+    thumbnails.forEach((thumbnail, index) => {
+        // 设置唯一ID
+        thumbnail.id = `thumbnail-${index}`;
+        console.log(`Setting thumbnail ID: ${thumbnail.id}`);
+        
+        // 在第一轮和第五轮时为第一个视频添加特殊处理
+        if ((index === 0 && currentRound === 0) || (index === 0 && currentRound === 4)) {
+            thumbnail.addEventListener('mousedown', (e) => {
+                // 只在第一轮和第五轮时阻止拖拽
+                if (currentRound === 0 || currentRound === 4) {
+                    e.preventDefault();
+                    // 只有当游戏已经开始后才显示提示
+                    if (gameStarted) {
+                        createAlert(`In Round ${currentRound + 1}, the first video is fixed and cannot be dragged`);
+                    } else {
+                        // 标记游戏已经开始
+                        gameStarted = true;
+                    }
+                }
+            });
+            // 将第一个视频标记为已使用（仅在第一轮和第五轮）
+            usedThumbnails.add(thumbnail.id);
+            console.log(`Round ${currentRound + 1}: First video marked as used`);
+        }
+        
+        thumbnail.addEventListener('dragstart', (e) => {
+            // 检查视频是否已被使用
+            if (usedThumbnails.has(thumbnail.id)) {
+                e.preventDefault();
+                createAlert('This video has already been used, please select another one');
+                return;
+            }
+            
+            // 检查是否是第二轮或第四轮的第四个视频
+            if (index === 3 && (currentRound === 1 || currentRound === 3)) {
+                e.preventDefault();
+                createAlert(`In Round ${currentRound + 1}, the fourth video slot is disabled and cannot be used`);
+                return;
+            }
+            
+            // 标记游戏已经开始
+            gameStarted = true;
+            
+            e.dataTransfer.setData('text/plain', thumbnail.id);
+            thumbnail.classList.add('dragging');
+            console.log(`Started dragging thumbnail: ${thumbnail.id}`);
+        });
+
+        thumbnail.addEventListener('dragend', () => {
+            thumbnail.classList.remove('dragging');
+            console.log(`Finished dragging thumbnail: ${thumbnail.id}`);
+        });
+    });
+
+    // 为clip slots添加拖拽事件
+    clipSlots.forEach((slot, index) => {
+        slot.addEventListener('dragover', (e) => {
+            // 第一轮或第五轮时，跳过第一个slot
+            if ((currentRound === 0 || currentRound === 4) && index === 0) {
+                return;
+            }
+            
+            if (slot.classList.contains('filled') || slot.classList.contains('disabled')) {
+                return;
+            }
+            
+            e.preventDefault();
+            slot.classList.add('droppable');
+        });
+
+        slot.addEventListener('dragleave', () => {
+            slot.classList.remove('droppable');
+        });
+
+        slot.addEventListener('drop', (e) => {
+            e.preventDefault();
+            
+            // 第一轮或第五轮时，跳过第一个slot
+            if ((currentRound === 0 || currentRound === 4) && index === 0) {
+                return;
+            }
+            
+            if (slot.classList.contains('filled') || slot.classList.contains('disabled')) {
+                return;
+            }
+            
+            slot.classList.remove('droppable');
+            
+            const thumbnailId = e.dataTransfer.getData('text/plain');
+            const thumbnail = document.getElementById(thumbnailId);
+            
+            if (thumbnail && !usedThumbnails.has(thumbnailId)) {
+                console.log(`Placed thumbnail ${thumbnailId} into clip slot ${index}`);
+                
+                // 标记缩略图为已使用
+                usedThumbnails.add(thumbnailId);
+                
+                const videoElement = thumbnail.querySelector('video');
+                if (videoElement && videoElement.querySelector('source')) {
+                    const videoSrc = videoElement.querySelector('source').getAttribute('src');
+                    
+                    slot.innerHTML = '';
+                    
+                    const newVideo = document.createElement('video');
+                    newVideo.className = 'clip-video';
+                    newVideo.autoplay = true;
+                    newVideo.loop = true;
+                    newVideo.muted = true;
+                    newVideo.playsinline = true;
+                    newVideo.dataset.thumbnailId = thumbnailId;
+                    
+                    const source = document.createElement('source');
+                    source.src = videoSrc;
+                    source.type = 'video/mp4';
+                    newVideo.appendChild(source);
+                    
+                    const closeButton = document.createElement('div');
+                    closeButton.className = 'clip-close';
+                    closeButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // 移除已使用标记
+                        usedThumbnails.delete(thumbnailId);
+                        slot.innerHTML = '';
+                        slot.classList.remove('filled');
+                        
+                        // 添加rub图标（除非是第一轮或第五轮的第一个slot）
+                        if (!((currentRound === 0 || currentRound === 4) && index === 0)) {
+                            const rubIconBg = createRubIcon(slot);
+                            slot.appendChild(rubIconBg);
+                        }
+                        
+                        checkClipSequence();
+                    });
+                    
+                    slot.appendChild(newVideo);
+                    slot.appendChild(closeButton);
+                    slot.classList.add('filled');
+                    
+                    newVideo.load();
+                    newVideo.play().catch(e => console.error('视频播放失败:', e));
+                    
+                    checkClipSequence();
+                }
+            }
+            slot.appendChild(rubIconBg);
+        }
+    });
+    
+    // 初始检查视频顺序
+    setTimeout(checkClipSequence, 500);
+    
+    // 确保所有符合条件的slot都显示rub图标
+    const ensureRubIconsForEmptySlots = () => {
+        clipSlots.forEach((slot, index) => {
+            // 如果slot没有filled类，且不是第一轮或第五轮的第一个slot，且不是被禁用的slot
+            if (!slot.classList.contains('filled') && !((currentRound === 0 || currentRound === 4) && index === 0) && !slot.classList.contains('disabled')) {
+                // 检查是否已经有rub图标
+                const existingRubIcon = slot.querySelector('.rub-icon-bg');
+                if (!existingRubIcon) {
+                    const rubIconBg = createRubIcon(slot);
+                    slot.appendChild(rubIconBg);
+                console.log(`Added rub icon to slot ${index + 1}`);
+            }
+        });
+        
+        // 如果是第五轮，确保第一个clip slot被正确填充
+        if (round === 4) {
+            setTimeout(() => {
+                autoFillFirstClip();
+                checkClipSequence(); // 检查视频序列
+            }, 100);
+        }
+    }
+    
+    // 清空编辑区域
+    function clearEditingArea() {
+        // 清空所有clip-slot
+        clipSlots.forEach((slot, index) => {
+            while (slot.firstChild) {
+                slot.removeChild(slot.firstChild);
+            }
+            // 移除filled和fixed类
+            slot.classList.remove('filled');
+            slot.classList.remove('fixed');
+            
+            // 添加rub图标（除非是第一轮或第五轮的第一个slot）
+            if (!((currentRound === 0 || currentRound === 4) && index === 0)) {
+                // 第二轮和第四轮中，禁用第四个 slot
+                if ((currentRound === 1 || currentRound === 3) && index === 3) {
+                    slot.classList.add('disabled');
+                } else {
+                    const rubIconBg = createRubIcon(slot);
+                    slot.appendChild(rubIconBg);
+                }
+            }
+        });
+        
+        // 清除标题显示
+        clearClipTitle();
+    }
+    
+    // 显示评论的函数
+    const showComments = (round, type) => {
+        console.log(`Displaying comments for round ${round + 1}, type: ${type}`); // 添加日志
+        const commentsContent = document.querySelector('.comments-content');
+        if (!commentsContent) {
+            console.error('未找到评论容器元素 .comments-content');
+            return;
+        }
+
+        // 清空现有评论
+        commentsContent.innerHTML = '';
+
+        // 获取对应回合和类型的评论
+        let comments = commentsData[round] ? commentsData[round][type] : null;
+        
+        // 如果类型是 neutral 但没有找到对应评论，尝试使用 unprejudiced 类型的评论
+        if (!comments && type === 'neutral' && commentsData[round] && commentsData[round]['unprejudiced']) {
+            comments = commentsData[round]['unprejudiced'];
+            console.log('Using unprejudiced type comments instead of neutral type in showComments');
+        }
+        
+        // 如果没有找到评论，使用默认评论
+        if (!comments || comments.length === 0) {
+            console.log(`No comments found for round ${round + 1}, type: ${type}, using default comments`);
+            comments = [
+                { text: "Great content!", likes: 123 },
+                { text: "Interesting perspective", likes: 87 },
+                { text: "Thanks for sharing this", likes: 65 },
+                { text: "I learned something new today", likes: 42 }
+            ];
+        }
+        
+        console.log(`Found ${comments.length} comments`); // 添加日志
+
+        // 创建评论元素
+        comments.forEach(comment => {
+            const commentElement = document.createElement('div');
+            commentElement.className = 'comment';
+            commentElement.style.padding = '10px';
+            commentElement.style.borderBottom = '1px solid #eee';
+            commentElement.style.marginBottom = '10px';
+
+            const commentText = document.createElement('div');
+            commentText.className = 'comment-text';
+            commentText.textContent = comment.text;
+            commentText.style.marginBottom = '5px';
+
+            const likesCount = document.createElement('div');
+            likesCount.className = 'likes-count';
+            likesCount.textContent = `👍 ${comment.likes}`;
+            likesCount.style.color = '#666';
+            likesCount.style.fontSize = '0.9em';
+
+            commentElement.appendChild(commentText);
+            commentElement.appendChild(likesCount);
+            commentsContent.appendChild(commentElement);
+        });
+
+        // 设置评论区样式
+        commentsContent.style.maxHeight = '300px';
+        commentsContent.style.overflowY = 'auto';
+        commentsContent.style.padding = '10px';
+    };
+    
+    // 初始化第一轮
+    initializeRound();
+    
+    // 显示第一轮的 facts
+    const factsText = document.querySelector('.facts-text');
+    if (factsText) {
+        factsText.textContent = roundFacts[0] || '';
+    }
+    
+    // 确保评论区和弹幕功能正常工作
+    const checkCommentsAndDanmaku = () => {
+        // 检查评论区容器
+        const commentsContent = document.querySelector('.comments-content');
+        if (!commentsContent) {
+            console.error('未找到评论容器元素 .comments-content');
+        } else {
+            console.log('评论容器已找到');
+        }
+        
+        // 检查是否有弹幕容器
+        const danmakuContainers = document.querySelectorAll('.danmaku-container');
+        if (danmakuContainers.length === 0) {
+            console.log('当前没有弹幕容器，这是正常的，因为还没有上传视频');
+        } else {
+            console.log(`找到 ${danmakuContainers.length} 个弹幕容器`);
+        }
+        
+        // 检查评论数据是否完整
+        for (let i = 0; i < 5; i++) {
+            const types = ['positive', 'negative', 'unprejudiced'];
+            types.forEach(type => {
+                const comments = commentsData[i] && commentsData[i][type];
+                console.log(`Round ${i+1} ${type} comments: ${comments ? comments.length : '无'}`);
+            });
+        }
+    };
+    
+    // 在页面加载完成后执行检查
+    setTimeout(checkCommentsAndDanmaku, 2000);
+    
+    console.log('拖拽功能初始化完成');
+
+    const enableClipSlot = (slot) => {
+        slot.classList.remove('disabled');
+        slot.setAttribute('draggable', 'true');
+        console.log('Restored clip slot to normal state');
+    };
+    
+    const disableClipSlot = (slot) => {
+        slot.classList.add('disabled');
+        slot.setAttribute('draggable', 'false');
+        console.log('Disabled clip slot');
+    };
+}); 
